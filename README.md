@@ -27,8 +27,8 @@ go_game_project/
 │ ├── login.html # 登入頁 
 │ ├── register.html # 註冊頁 
 │ └── partials/ 
-│ ├── profile.html # 個人資訊頁 
-│ └── rules.html # 圍棋規則說明 
+│ │ ├── profile.html # 個人資訊頁 
+│ │ └── rules.html # 圍棋規則說明 
 ├── instance/ # Flask instance folder（會被忽略） 
 └── pycache/ # Python cache（會被忽略）
 ```
