@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}對局紀錄{% endblock %}
+{% block content %}
+<h2>對局紀錄</h2>
+<table border="1">
+  <tr>
+    <th>ID</th>
+    <th>對局內容</th>
+    <th>時間</th>
+  </tr>
+  {% for record in records %}
+  <tr>
+    <td>{{ record.id }}</td>
+    <td><pre>{{ record.moves }}</pre></td>
+    <td>{{ record.created_at }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

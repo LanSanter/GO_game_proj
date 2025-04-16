@@ -3,8 +3,8 @@ from flask_socketio import SocketIO, emit
 from flask_sqlalchemy import SQLAlchemy
 from game_logic import GameManager
 from user_auth import UserManager
-from models import db, User
-import os
+from models import db, User, GameRecord
+import os, json
 
 app = Flask(__name__)
 app.secret_key = 'super-secret-key'
@@ -56,6 +56,23 @@ def partial(name):
     except:
         return "Not found", 404
 
+@app.route("/records")
+def records():
+    records = GameRecord.query.order_by(GameRecord.created_at.desc()).all()
+    return render_template("records.html", records=records)
+
+@app.route("/view_record", methods=["GET"])
+def view_record():
+    records = GameRecord.query.order_by(GameRecord.created_at.desc()).all()
+    record_id = request.args.get("record_id")
+    selected = None
+    moves = None
+    if record_id:
+        selected = GameRecord.query.get(record_id)
+        if selected:
+            moves = selected.moves
+    return render_template("view_record.html", records=records, selected=selected, moves=moves)
+
 @socketio.on("place_stone")
 def handle_place_stone(data):
     game_id = data["game_id"]
@@ -73,7 +90,23 @@ def handle_new_game():
 def handle_reset_board(data):
     game_id = data["game_id"]
     result = game_manager.reset_game(game_id)
+    if result["success"]:
+        record = GameRecord(moves=json.dumps(result["moves"]))
+        db.session.add(record)
+        db.session.commit()
     emit("board_reset", result, broadcast=True)
+
+@app.route("/view_record", methods=["GET"], endpoint="view_record_page")
+def view_record():
+    records = GameRecord.query.order_by(GameRecord.created_at.desc()).all()
+    record_id = request.args.get("record_id")
+    selected = None
+    moves = None
+    if record_id:
+        selected = GameRecord.query.get(record_id)
+        if selected:
+            moves = selected.moves
+    return render_template("view_record.html", records=records, selected=selected, moves=moves)
 
 if __name__ == "__main__":
     socketio.run(app, debug=True)
