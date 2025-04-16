@@ -20,7 +20,8 @@ go_game_project/
 │ ├── js/ 
 │ │ ├── main.js # partial 畫面載入邏輯 
 │ │ └── board.js # WebSocket + 棋盤繪製 
-├── templates/ │ ├── base.html # 母板模板 
+├── templates/
+│ ├── base.html # 母板模板 
 │ ├── index.html # 主頁（遊戲畫面） 
 │ ├── login.html # 登入頁 
 │ ├── register.html # 註冊頁 
