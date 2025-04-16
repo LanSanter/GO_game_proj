@@ -45,7 +45,7 @@ venv\Scripts\activate           # Windows
 ```
 ### 2.安裝依賴
 ```bash
-pip install -r requirements.txt
+pip install -r requirement.txt
 ```
 
 ### 3.根目錄啟動伺服器
