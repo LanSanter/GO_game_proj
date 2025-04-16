@@ -8,7 +8,7 @@ Game project about GO for PD course
 ---
 
 ## 📁 專案結構
-
+```
 go_game_project/ 
 ├── app.py # 主 Flask 應用（routing + WebSocket） 
 ├── game_logic.py # 遊戲邏輯（棋盤控制、輪流判斷、清空） 
@@ -29,7 +29,7 @@ go_game_project/
 │ └── rules.html # 圍棋規則說明 
 ├── instance/ # Flask instance folder（會被忽略） 
 └── pycache/ # Python cache（會被忽略）
-
+```
 
 ---
 
