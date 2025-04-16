@@ -12,7 +12,8 @@ Game project about GO for PD course
 go_game_project/ 
 ├── app.py # 主 Flask 應用（routing + WebSocket） 
 ├── game_logic.py # 遊戲邏輯（棋盤控制、輪流判斷、清空） 
-├── user_auth.py # 使用者登入/註冊驗證（與 DB 整合） ├── models.py # 資料庫模型（User） 
+├── user_auth.py # 使用者登入/註冊驗證（與 DB 整合）
+├── models.py # 資料庫模型（User） 
 ├── requirements.txt # Python 依賴列表 
 ├── static/ 
 │ ├── css/ 
