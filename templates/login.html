@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}登入{% endblock %}
+{% block content %}
+<h2>登入</h2>
+<form method="POST">
+    <label>Username:</label><input type="text" name="username"><br>
+    <label>Password:</label><input type="password" name="password"><br>
+    <button type="submit">登入</button>
+</form>
+<p>尚未註冊？<a href="{{ url_for('register') }}">前往註冊</a></p>
+{% endblock %}

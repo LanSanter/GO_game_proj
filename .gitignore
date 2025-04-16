@@ -1,0 +1,14 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Flask instance folder (may contain secret keys or database)
+instance/
+
+# SQLite database file (如果不想上傳 users.db)
+users.db
+
+# VSCode settings (可選)
+.vscode/

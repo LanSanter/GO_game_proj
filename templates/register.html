@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}註冊{% endblock %}
+{% block content %}
+<h2>註冊新帳號</h2>
+<form id="register-form">
+    <label>帳號：</label><input type="text" id="reg-username"><br>
+    <label>密碼：</label><input type="password" id="reg-password"><br>
+    <button type="submit">註冊</button>
+</form>
+<p id="register-msg"></p>
+<p>已經有帳號了？<a href="{{ url_for('login') }}">回到登入頁</a></p>
+<script>
+document.getElementById("register-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const username = document.getElementById("reg-username").value;
+    const password = document.getElementById("reg-password").value;
+
+    const res = await fetch("/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    const msg = document.getElementById("register-msg");
+    msg.textContent = data.success ? "註冊成功！請返回登入" : `註冊失敗：${data.error}`;
+});
+</script>
+{% endblock %}
