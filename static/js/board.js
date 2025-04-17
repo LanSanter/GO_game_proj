@@ -4,10 +4,12 @@ if (canvas) {
     const cellSize = 30;
     const boardSize = 19;
     let gameId = null;
+
     let currentColor = "black";
     const boardState = Array.from({ length: boardSize }, () =>
         Array(boardSize).fill(null)
     );
+
     const socket = io();
     socket.on("connect", () => {
         socket.emit("new_game");
@@ -33,6 +35,8 @@ if (canvas) {
         }
         socket.emit("place_stone", { game_id: gameId, x: x, y: y, color: currentColor });
     });
+
+    
     function drawBoard() {
         ctx.fillStyle = "#8B7765";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
