@@ -6,6 +6,7 @@ if (canvas) {
     let gameId = null;
 
     let currentColor = "black";
+    let lastMove = null; //最新落子座標
     const boardState = Array.from({ length: boardSize }, () =>
         Array(boardSize).fill(null)
     );
@@ -19,9 +20,16 @@ if (canvas) {
         drawBoard();
     });
     socket.on("update_board", (data) => {
+        if (data.captures) {
+            for (let stone of data.captures) {
+                boardState[stone[1]][stone[0]] = null;
+            }
+            redrawBoard();
+        }
         if (data.success) {
-            drawStone(data.x, data.y, data.color);
             boardState[data.y][data.x] = data.color;
+            lastMove = { x: data.x, y: data.y };
+            redrawBoard();  // 會畫整盤 + 所有棋子 + 新紅框
             currentColor = (data.color === "black") ? "white" : "black";
         }
     });
@@ -36,6 +44,19 @@ if (canvas) {
         socket.emit("place_stone", { game_id: gameId, x: x, y: y, color: currentColor });
     });
 
+    function redrawBoard() {
+        drawBoard();
+        for (let y = 0; y < boardSize; y++) {
+            for (let x = 0; x < boardSize; x++) {
+                const color = boardState[y][x];
+                if (color) drawStone(x, y, color);
+            }
+        }
+    
+        if (lastMove) {
+            drawHighlight(lastMove.x, lastMove.y);
+        }
+    }
     
     function drawBoard() {
         ctx.fillStyle = "#8B7765";
@@ -51,12 +72,36 @@ if (canvas) {
             ctx.lineTo(cellSize / 2 + i * cellSize, cellSize * (boardSize - 0.5));
             ctx.stroke();
         }
+
+        // 🎯 星位點座標
+        const starCoords = [3, 9, 15];  // 第4、10、16行
+
+        for (let i of starCoords) {
+            for (let j of starCoords) {
+                const x = (i + 0.5) * cellSize;
+                const y = (j + 0.5) * cellSize;
+                ctx.fillStyle = "black";
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);  // 半徑 3px → 直徑 6px
+                ctx.fill();
+            }
+        }
     }
     function drawStone(x, y, color) {
         ctx.beginPath();
         ctx.arc((x + 0.5) * cellSize, (y + 0.5) * cellSize, cellSize / 2.5, 0, 2 * Math.PI);
         ctx.fillStyle = color;
         ctx.fill();
+    }
+    function drawHighlight(x, y) {
+        const px = (x + 0.5) * cellSize;
+        const py = (y + 0.5) * cellSize;
+        const size = 6;
+    
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = "red";
+        ctx.fillRect(px - size / 2, py - size / 2, size, size);
+        ctx.globalAlpha = 1.0;
     }
     function resetBoard() {
         socket.emit("reset_board", { game_id: gameId });
