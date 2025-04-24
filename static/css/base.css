@@ -18,3 +18,7 @@ nav button, nav a {
 canvas {
     margin-top: 20px;
 }
+
+nav a{
+    color: aqua;
+}
