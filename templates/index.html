@@ -3,6 +3,10 @@
 {% block content %}
     <h2>歡迎，{{ session.username }}</h2>
     <button onclick="resetBoard()">重設棋盤</button>
+    <div style="margin-top: 10px;">
+        <p><strong>目前輪到：</strong> <span id="turn-indicator">⚫黑棋</span></p>
+        <p id="error-msg" style="color: red; height: 1.5em;"></p>
+    </div> 
     <div if="game-board">
         <canvas id="board" width="570" height="570" style="border:1px solid black"></canvas>
     </div>

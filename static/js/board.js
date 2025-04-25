@@ -20,6 +20,10 @@ if (canvas) {
         drawBoard();
     });
     socket.on("update_board", (data) => {
+        const msgBox = document.getElementById("error-msg");
+        const turnBox = document.getElementById("turn-indicator"); //當前執棋方
+        
+
         if (data.captures) {
             for (let stone of data.captures) {
                 boardState[stone[1]][stone[0]] = null;
@@ -31,14 +35,19 @@ if (canvas) {
             lastMove = { x: data.x, y: data.y };
             redrawBoard();  // 會畫整盤 + 所有棋子 + 新紅框
             currentColor = (data.color === "black") ? "white" : "black";
+            turnBox.textContent = (currentColor === "black") ? "⚫黑棋" : "⚪白棋";
+            msgBox.textContent = "";
+        } else {
+            msgBox.textContent = data.message || "落子失敗";
         }
     });
     canvas.addEventListener("click", (e) => {
+        const msgBox = document.getElementById("error-msg");
         const rect = canvas.getBoundingClientRect();
         const x = Math.floor((e.clientX - rect.left) / cellSize);
         const y = Math.floor((e.clientY - rect.top) / cellSize);
         if (boardState[y][x] !== null) {
-            console.log("該位置已有棋子！");
+            msgBox.textContent = "該位置已有棋子！";
             return;
         }
         socket.emit("place_stone", { game_id: gameId, x: x, y: y, color: currentColor });
