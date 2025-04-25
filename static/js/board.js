@@ -1,5 +1,11 @@
+import { convolutionByRowUpdate } from './conv.js';
+
 const canvas = document.getElementById("board");
+
+
 if (canvas) {
+    
+
     const ctx = canvas.getContext("2d");
     const cellSize = 30;
     const boardSize = 19;
@@ -10,6 +16,8 @@ if (canvas) {
     const boardState = Array.from({ length: boardSize }, () =>
         Array(boardSize).fill(null)
     );
+
+    const currentColorRef = { value: currentColor };
 
     const socket = io();
     socket.on("connect", () => {
@@ -81,17 +89,17 @@ if (canvas) {
             ctx.lineTo(cellSize / 2 + i * cellSize, cellSize * (boardSize - 0.5));
             ctx.stroke();
         }
-
+    
         // 🎯 星位點座標
         const starCoords = [3, 9, 15];  // 第4、10、16行
-
+    
         for (let i of starCoords) {
             for (let j of starCoords) {
                 const x = (i + 0.5) * cellSize;
                 const y = (j + 0.5) * cellSize;
                 ctx.fillStyle = "black";
                 ctx.beginPath();
-                ctx.arc(x, y, 3, 0, Math.PI * 2);  // 半徑 3px → 直徑 6px
+                ctx.arc(x, y, 3, 0, Math.PI * 2);  // 半徑 3px 
                 ctx.fill();
             }
         }
@@ -112,6 +120,7 @@ if (canvas) {
         ctx.fillRect(px - size / 2, py - size / 2, size, size);
         ctx.globalAlpha = 1.0;
     }
+
     function resetBoard() {
         socket.emit("reset_board", { game_id: gameId });
         for (let y = 0; y < boardSize; y++) {
@@ -120,4 +129,22 @@ if (canvas) {
         drawBoard();
         currentColor = "black";
     }
+
+    // 暴露到全局函數
+    window.convolutionByRowUpdate = () => {
+        convolutionByRowUpdate(
+            boardState,
+            boardSize,
+            (x, y, color) => {
+                socket.emit("place_stone", { game_id: gameId, x, y, color });
+            },
+            currentColorRef
+        );
+    };
+    window.resetBoard = resetBoard;
 }
+
+
+
+
+
