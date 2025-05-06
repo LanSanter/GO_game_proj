@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}卷積模式{% endblock %}
+
+{% block extra_head %}
+<style>
+  #filter-list { display:flex; gap:16px; margin:16px 0; }
+  .filter-card { border:2px solid #444; padding:6px; cursor:pointer; }
+  .filter-used { opacity:.4; cursor:not-allowed; }
+  .filter-card table { border-collapse:collapse; }
+  .filter-card td { width:22px; height:22px; text-align:center; border:1px solid #aaa; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>卷積模式</h2>
+
+<div id="board-wrap">
+  <canvas id="goBoard" width="760" height="760"></canvas>
+</div>
+
+<h3>選擇要用的卷積卡</h3>
+<div id="filter-list"></div>
+<p><button id="apply-btn" disabled>確認卷積</button></p>
+{% endblock %}
+
+{% block extra_script %}
+<script src="{{ url_for('static', filename='js/board.js') }}"></script>
+<script src="{{ url_for('static', filename='js/conv_mode.js') }}"></script>
+{% endblock %}

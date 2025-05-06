@@ -5,7 +5,11 @@ from game_logic import GameManager
 from user_auth import UserManager
 from models import db, User, GameRecord
 import os, json
-
+from functools import wraps
+from flask import (
+    Flask, render_template, redirect,
+    url_for, request, session, jsonify
+)
 app = Flask(__name__)
 app.secret_key = 'super-secret-key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
@@ -31,7 +35,7 @@ def login():
         password = request.form["password"]
         if user_manager.verify_user(username, password):
             session['username'] = username
-            return redirect(url_for('index'))
+            return redirect(url_for("lobby"))
         return "Login failed", 401
     return render_template("login.html")
 
@@ -48,6 +52,10 @@ def register():
 def logout():
     session.pop('username', None)
     return redirect(url_for('login'))
+
+@app.route("/lobby")
+def lobby():
+    return render_template("lobby.html")
 
 @app.route("/partials/<name>")
 def partial(name):
@@ -107,6 +115,33 @@ def view_record():
         if selected:
             moves = selected.moves
     return render_template("view_record.html", records=records, selected=selected, moves=moves)
+
+@app.route("/")
+def classic_game():
+    return render_template("index.html")
+
+@app.route("/conv")
+def conv_mode():
+    return render_template("conv_mode.html")
+
+@app.route("/card")
+def card_mode():
+    return render_template("deck_builder.html")
+
+@app.get("/api/cards")
+def api_cards():
+    return jsonify([
+        {"id": 1, "name": "黑棋", "cost": 2},
+        {"id": 2, "name": "白棋", "cost": 2},
+        {"id": 3, "name": "拆牌", "cost": 3},
+        {"id": 4, "name": "3×3破壞", "cost": 4},
+    ])
+
+@app.post("/api/decks")
+def api_save_deck():
+    data = request.get_json()
+    # TODO: 寫進資料庫
+    return jsonify({"deck_id": "mock123"}), 201
 
 if __name__ == "__main__":
     socketio.run(app, debug=True)
