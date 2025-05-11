@@ -1,4 +1,5 @@
 import { convolutionByRowUpdate } from './conv.js';
+import { convFilters } from './filter.js';
 
 const canvas = document.getElementById("board");
 
@@ -138,7 +139,12 @@ if (canvas) {
             (x, y, color) => {
                 socket.emit("place_stone", { game_id: gameId, x, y, color });
             },
-            currentColorRef
+            currentColorRef,
+            () => {
+                socket.emit("apply_convolution", { game_id: gameId, filter: "default" });
+            },
+            gameId,
+            convFilters[0]         
         );
     };
     window.resetBoard = resetBoard;

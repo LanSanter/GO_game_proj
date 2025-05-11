@@ -1,8 +1,4 @@
-const convFilter = [
-    [1,  0, -1],
-    [-1, 0,  1],
-    [1,  0, -1]
-];
+
 //將棋盤從19*19 變成21*21，保證卷積後棋盤大小不變
 function getPaddedBoard(board, padding = 1) {
     const size = board.length;
@@ -24,14 +20,20 @@ function getPaddedBoard(board, padding = 1) {
     return padded;
 }
 
-async function convolutionByRowUpdate(boardState, boardSize, emitPlaceStone, currentColorRef) {
+async function convolutionByRowUpdate(boardState, boardSize, emitPlaceStone, currentColorRef, clearBoard ,gameId, filterMatrix) {
     const padded = getPaddedBoard(boardState);
     const newMoves = [];
 
-    // 清除棋盤（直接清空狀態，不呼叫 resetBoard）
+    const socket = io()
+    // 清除棋盤（直接清空狀態，不呼叫 resetBoard
+    clearBoard();
     for (let y = 0; y < boardSize; y++) {
         boardState[y].fill(null);
     }
+    socket.on("convolution_applied", (result) => {
+        console.log(result.message);
+    })
+    
 
     const curcolor = currentColorRef.value;
 
@@ -46,7 +48,7 @@ async function convolutionByRowUpdate(boardState, boardSize, emitPlaceStone, cur
                 for (let dx = 0; dx < 3; dx++) {
                     const py = y + dy;
                     const px = x + dx;
-                    sum += padded[py][px] * convFilter[dy][dx];
+                    sum += padded[py][px] * filterMatrix[dy][dx];
                 }
             }
 
@@ -67,4 +69,4 @@ async function convolutionByRowUpdate(boardState, boardSize, emitPlaceStone, cur
     currentColorRef.value = curcolor;
 }
 
-export {convolutionByRowUpdate, getPaddedBoard, convFilter}
+export {convolutionByRowUpdate, getPaddedBoard}

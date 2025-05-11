@@ -8,7 +8,7 @@ class Game:
 
     def place_stone(self, x, y, color):
         if not self.is_valid_move(x, y, color):
-            return {"x": x, "y": y, "color": color, "success": False, "message": "Invalid move."}
+            return {"x": x, "y": y, "color": color, "success": False, "message": "妳不能下在邊界外或是已有棋子的位子"}
 
         self.board[y][x] = color
         opponent = "white" if color == "black" else "black"
@@ -87,6 +87,16 @@ class Game:
         moves = self.moves.copy()
         self.__init__()
         return {"success": True, "message": "Board reset.", "moves": moves}
+    
+    def apply_convolution(self, filter_name="default"):
+        moves = self.moves.copy()
+        self.__init__()
+        self.moves = moves
+        self.filter_used = filter_name
+
+        self.moves.append({"x": None, "y": None, "color": None, "filter": filter_name})
+
+        return {"success": True, "message": f"應用了 filter: {filter_name}"}
 
 class GameManager:
     def __init__(self):
@@ -107,4 +117,10 @@ class GameManager:
         game = self.games.get(game_id)
         if game:
             return game.reset_board()
+        return {"success": False, "message": "Game not found."}
+    
+    def apply_convolution(self,game_id, filter_name="default"):
+        game = self.games.get(game_id)
+        if game:
+            return game.apply_convolution(filter_name)
         return {"success": False, "message": "Game not found."}
