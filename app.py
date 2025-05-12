@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, session, url_for, jsonify
 from flask_socketio import SocketIO, emit
 from flask_sqlalchemy import SQLAlchemy
-from game_logic import GameManager
+from game_logic import GameManager, Game
 from user_auth import UserManager
 from models import db, User, GameRecord
 import os, json
@@ -93,6 +93,17 @@ def handle_place_stone(data):
 def handle_new_game():
     game_id = game_manager.create_game()
     emit("game_created", {"game_id": game_id})
+
+@socketio.on("apply_convolution")
+def handle_apply_convolution(data):
+    game_id = data.get("game_id")
+    filter_name = data.get("filter")
+    
+
+
+    result = game_manager.apply_convolution(game_id, filter_name)
+    emit("convolution_applied", result, broadcast=True)
+
 
 @socketio.on("reset_board")
 def handle_reset_board(data):
