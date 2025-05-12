@@ -1,17 +1,10 @@
 {% extends "base.html" %}
 {% block title %}遊戲大廳{% endblock %}
 {% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/filter.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/board.css') }}">
 {% endblock %}
 {% block content %}
 <div class="game-layout">
-    <div class="side-panel">
-        <h3>選擇要用的卷積卡</h3>
-        <div id="filter-list"></div>
-        <p><button id="apply-btn" disabled>確認卷積</button></p>
-    </div>
-
     <div class="main-panel">
         <h2>歡迎，{{ session.username }}</h2>
         <div id="game-button">
@@ -30,5 +23,5 @@
 {% endblock %}
 {% block scripts %}
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-<script type="module" src="{{ url_for('static', filename='js/conv_mode.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/board.js') }}"></script>
 {% endblock %}

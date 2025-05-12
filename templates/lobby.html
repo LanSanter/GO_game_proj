@@ -6,7 +6,7 @@
 <h2 class="center">選擇遊戲模式</h2>
 
 <div class="mode-wrap">
-  <a class="mode-card" href="{{ url_for('classic_game') }}">
+  <a class="mode-card" href="{{ url_for('classic_mode') }}">
      <h3>經典對弈</h3><p>傳統 19×19 對局</p>
   </a>
   <a class="mode-card" href="{{ url_for('conv_mode') }}">
@@ -16,6 +16,7 @@
     <h3>卡牌模式</h3><p>圍棋!卡牌對戰!</p>
   </a>
 </div>
+<div id="partial-content"></div>
 {% endblock %}
 
 {% block extra_head %}

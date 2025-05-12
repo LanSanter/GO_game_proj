@@ -1,15 +1,14 @@
+
 from flask import Flask, render_template, request, redirect, session, url_for, jsonify
 from flask_socketio import SocketIO, emit
 from flask_sqlalchemy import SQLAlchemy
 from game_logic import GameManager, Game
 from user_auth import UserManager
 from models import db, User, GameRecord
-import os, json
+from filter import FILTER_POOL
+import os, json, random
 from functools import wraps
-from flask import (
-    Flask, render_template, redirect,
-    url_for, request, session, jsonify
-)
+
 app = Flask(__name__)
 app.secret_key = 'super-secret-key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
@@ -25,7 +24,7 @@ with app.app_context():
 @app.route("/")
 def index():
     if 'username' in session:
-        return render_template("index.html")
+        return render_template("lobby.html")
     return redirect(url_for('login'))
 
 @app.route("/login", methods=["GET", "POST"])
@@ -69,7 +68,7 @@ def records():
     records = GameRecord.query.order_by(GameRecord.created_at.desc()).all()
     return render_template("records.html", records=records)
 
-@app.route("/view_record", methods=["GET"])
+@app.route("/view_record", methods=["GET"], endpoint="view_record_page")
 def view_record():
     records = GameRecord.query.order_by(GameRecord.created_at.desc()).all()
     record_id = request.args.get("record_id")
@@ -80,6 +79,24 @@ def view_record():
         if selected:
             moves = selected.moves
     return render_template("view_record.html", records=records, selected=selected, moves=moves)
+
+# @app.route("/")
+# def classic_game():
+#     return render_template("index.html")
+@app.route("/classic")
+def classic_mode():
+    return render_template("classic.html")
+
+
+@app.route("/conv")
+def conv_mode():
+    return render_template("conv_mode.html")
+
+@app.route("/card")
+def card_mode():
+    return render_template("deck_builder.html")
+
+
 
 @socketio.on("place_stone")
 def handle_place_stone(data):
@@ -94,17 +111,6 @@ def handle_new_game():
     game_id = game_manager.create_game()
     emit("game_created", {"game_id": game_id})
 
-@socketio.on("apply_convolution")
-def handle_apply_convolution(data):
-    game_id = data.get("game_id")
-    filter_name = data.get("filter")
-    
-
-
-    result = game_manager.apply_convolution(game_id, filter_name)
-    emit("convolution_applied", result, broadcast=True)
-
-
 @socketio.on("reset_board")
 def handle_reset_board(data):
     game_id = data["game_id"]
@@ -115,29 +121,19 @@ def handle_reset_board(data):
         db.session.commit()
     emit("board_reset", result, broadcast=True)
 
-@app.route("/view_record", methods=["GET"], endpoint="view_record_page")
-def view_record():
-    records = GameRecord.query.order_by(GameRecord.created_at.desc()).all()
-    record_id = request.args.get("record_id")
-    selected = None
-    moves = None
-    if record_id:
-        selected = GameRecord.query.get(record_id)
-        if selected:
-            moves = selected.moves
-    return render_template("view_record.html", records=records, selected=selected, moves=moves)
+@app.route("/api/random_filters")
+def random_filters():
+    selected = random.sample(FILTER_POOL, 3)
+    return jsonify(selected)
 
-@app.route("/")
-def classic_game():
-    return render_template("index.html")
+@socketio.on("apply_convolution")
+def handle_apply_convolution(data):
+    game_id = data.get("game_id")
+    filter_name = data.get("filter")
+    
+    result = game_manager.apply_convolution(game_id, filter_name)
+    emit("convolution_applied", result, broadcast=True)
 
-@app.route("/conv")
-def conv_mode():
-    return render_template("conv_mode.html")
-
-@app.route("/card")
-def card_mode():
-    return render_template("deck_builder.html")
 
 @app.get("/api/cards")
 def api_cards():
@@ -155,4 +151,6 @@ def api_save_deck():
     return jsonify({"deck_id": "mock123"}), 201
 
 if __name__ == "__main__":
+
     socketio.run(app, debug=True)
+    

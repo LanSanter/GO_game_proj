@@ -1,0 +1,23 @@
+#filter-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.filter-card {
+    width: 90%;
+    max-width: 200px;
+    height: 140px;
+    background-color: #eee;
+    border: 1px solid #999;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.filter-card.flipped {
+    background-color: #ccc;
+    color: gray;
+    pointer-events: none;
+}

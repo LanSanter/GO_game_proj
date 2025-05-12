@@ -12,3 +12,6 @@ users.db
 
 # VSCode settings (可選)
 .vscode/
+
+# 虛擬環境Venv
+venv/
