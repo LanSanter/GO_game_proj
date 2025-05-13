@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 {% block title %}註冊{% endblock %}
 {% block content %}
-<h2>註冊新帳號</h2>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login_register.css') }}">
 <form id="register-form">
-    <label>帳號：</label><input type="text" id="reg-username"><br>
-    <label>密碼：</label><input type="password" id="reg-password"><br>
+    <h2>註冊新帳號</h2>
+    <input type="text" id="reg-username" placeholder="Username"><br>
+    <input type="password" id="reg-password" placeholder="Password"><br>
     <button type="submit">註冊</button>
 </form>
 <p id="register-msg"></p>
