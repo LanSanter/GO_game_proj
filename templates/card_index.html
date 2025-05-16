@@ -1,0 +1,12 @@
+{% extends "card_base.html" %}
+{% block title %}主頁 ‧ 圍棋!卡牌{% endblock %}
+{% block content %}
+<section class="hero">
+  <h2>圍棋!卡牌</h2>
+  <div class="btn-group">
+    <a class="btn" href="{{ url_for('card_build_deck') }}">構建牌組</a>
+    <a class="btn" href="{{ url_for('card_battle') }}">雙人對戰</a>
+    <a class="btn" href="{{ url_for('card_gacha') }}">獲得卡牌</a>
+  </div>
+</section>
+{% endblock %}

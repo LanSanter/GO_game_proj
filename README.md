@@ -45,6 +45,7 @@ venv\Scripts\activate           # Windows
 ```
 ### 2.安裝依賴
 ```bash
+cd 到妳目前的資料夾 #可做可不做
 pip install -r requirement.txt
 ```
 

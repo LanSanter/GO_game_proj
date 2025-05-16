@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, redirect, session, url_for, jsonify
 from flask_socketio import SocketIO, emit
 from flask_sqlalchemy import SQLAlchemy
@@ -92,12 +91,6 @@ def classic_mode():
 def conv_mode():
     return render_template("conv_mode.html")
 
-@app.route("/card")
-def card_mode():
-    return render_template("deck_builder.html")
-
-
-
 @socketio.on("place_stone")
 def handle_place_stone(data):
     game_id = data["game_id"]
@@ -134,21 +127,89 @@ def handle_apply_convolution(data):
     result = game_manager.apply_convolution(game_id, filter_name)
     emit("convolution_applied", result, broadcast=True)
 
+# ----------------------  卡牌系統  ----------------------
+@app.route("/card")
+def card_index():
+    return render_template("card_index.html")
 
-@app.get("/api/cards")
+@app.route("/card/build_deck")
+def card_build_deck():
+    return render_template("card_build_deck.html")
+
+@app.route("/card/battle")
+def card_battle():
+    return render_template("card_battle.html")
+
+@app.route("/card/gacha")
+def card_gacha():
+    return render_template("card_gacha.html")
+
+@app.route("/api/card_gacha", methods=["POST"])
+def api_card_gacha():
+    cards = random.sample(CARD_POOL, 5)
+    return jsonify(cards=cards)
+
+# -----------------------  DEMO 卡池與暫存 -----------------------
+# ----------------------  卡牌系統：統一卡池與路由 ----------------------
+CARD_POOL = [
+    {"id": 1, "name": "黑棋", "cost": 2, "type": "stone",
+     "img": "/static/img/cards/1.png"},
+    {"id": 2, "name": "白棋", "cost": 2, "type": "stone",
+     "img": "/static/img/cards/2.png"},
+    {"id": 3, "name": "拆牌", "cost": 3, "type": "function",
+     "img": "/static/img/cards/3.png"},
+    {"id": 4, "name": "3×3 破壞", "cost": 4, "type": "general",
+     "img": "/static/img/cards/4.png"},
+]
+
+USER_DECKS = {}          # { session.sid : [card ids] }
+
+# --------- 1. 卡池列表（DeckBuilder 用） ---------
+@app.route("/api/cards", methods=["GET"])
 def api_cards():
-    return jsonify([
-        {"id": 1, "name": "黑棋", "cost": 2},
-        {"id": 2, "name": "白棋", "cost": 2},
-        {"id": 3, "name": "拆牌", "cost": 3},
-        {"id": 4, "name": "3×3破壞", "cost": 4},
-    ])
+    return jsonify(CARD_POOL)          # <─ 一律回傳帶 img 的完整資料
 
-@app.post("/api/decks")
+# --------- 2. 儲存 / 讀取牌組 ---------
+@app.route("/api/decks", methods=["POST"])
 def api_save_deck():
+    deck = request.get_json(force=True).get("deck", [])
+    USER_DECKS[session.sid] = deck
+    return jsonify(success=True), 201
+
+@app.route("/api/decks", methods=["GET"])
+def api_get_deck():
+    return jsonify(deck=USER_DECKS.get(session.sid, []))
+
+# --------- 3. 抽 5 張手牌 ---------
+@app.route("/api/card_deal", methods=["GET"])
+def api_card_deal():
+    deck = USER_DECKS.get(session.sid)
+    if not deck:
+        deck = [1]*70 + [3,4,3,4,3]     # demo：至少含 id 3、4 才不會 KeyError
+    random.shuffle(deck)
+    hand, rest = deck[:5], deck[5:]
+    USER_DECKS[session.sid] = rest
+    id2card = {c["id"]: c for c in CARD_POOL}
+    return jsonify(hand=[id2card[i] for i in hand])
+
+
+# -----------------------  API: 取得卡池 -----------------------
+@app.get("/api/card_collection")
+def api_card_collection():
+    return jsonify(cards=CARD_POOL)
+
+# -----------------------  API: 儲存牌組 -----------------------
+@app.post("/api/card_save_deck")
+def api_card_save_deck():
     data = request.get_json()
-    # TODO: 寫進資料庫
-    return jsonify({"deck_id": "mock123"}), 201
+    USER_DECKS[session.sid] = data.get("deck", [])
+    return jsonify(ok=True)
+
+# -----------------------  API: 取得牌組 -----------------------
+@app.get("/api/card_get_deck")
+def api_card_get_deck():
+    return jsonify(deck=USER_DECKS.get(session.sid, []))
+
 
 if __name__ == "__main__":
 

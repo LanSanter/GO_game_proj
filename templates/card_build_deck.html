@@ -1,0 +1,34 @@
+{% extends "card_base.html" %}
+{% block title %}構建牌組{% endblock %}
+
+{% block content %}
+<div class="deck-builder">
+  <section class="deck-workbench">
+    <header>
+      <h3 id="deck-name">牌組 1</h3>
+      <progress id="deck-progress" value="0" max="110"></progress>
+      <span class="small">預算 <span id="card-count">0</span>/110</span>
+    </header>
+
+    <ul id="deck-slots" class="card-row"></ul>
+
+    <h4>我的卡牌</h4>
+    <div id="collection" class="card-grid"></div>
+
+    <button class="btn danger" id="export-deck">匯出 / 匯入</button>
+  </section>
+
+  <aside class="deck-sidebar">
+    <h4>我的牌組</h4>
+    <ul id="deck-list">
+      <li class="deck-item active">牌組 1</li>
+      <li class="deck-item">牌組 2</li>
+    </ul>
+    <button class="btn icon" id="add-deck">＋ 新牌組</button>
+  </aside>
+</div>
+{% endblock %}
+
+{% block script_extra %}
+<script src="{{ url_for('static', filename='js/card_deckbuilder.js') }}"></script>
+{% endblock %}

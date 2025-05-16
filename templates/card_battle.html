@@ -1,0 +1,32 @@
+{% extends "card_base.html" %}
+{% block title %}雙人對戰{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessboardjs@1.0.0/css/chessboard.min.css">
+<script src="{{ url_for('static', filename='js/board.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/board.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="battle-wrap">
+  <div id="board" class="board"></div>
+
+  <aside class="battle-sidebar">
+    <section class="energy">
+      <label>能量</label>
+      <progress id="energy-bar" value="2" max="6"></progress>
+      <span id="energy-val">2 / 6</span>
+    </section>
+
+    <section class="hand">
+      <h4>手牌</h4>
+      <ul id="hand-cards" class="card-row"></ul>
+    </section>
+  </aside>
+</div>
+{% endblock %}
+
+{% block script_extra %}
+<script src="https://cdn.jsdelivr.net/npm/chessboardjs@1.0.0/js/chessboard.min.js"></script>
+<script src="{{ url_for('static', filename='js/card_battle.js') }}"></script>
+{% endblock %}

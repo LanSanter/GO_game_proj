@@ -1,0 +1,18 @@
+{% extends "card_base.html" %}
+{% block title %}獲得卡牌{% endblock %}
+
+{% block content %}
+<section class="gacha-wrap">
+  <div class="pack" id="pack">
+    <span class="shine"></span>
+    <button class="btn large" id="open-btn">開啟卡包</button>
+  </div>
+
+  <h4 id="result-title" class="hidden">獲得卡牌</h4>
+  <ul id="result-grid" class="card-grid"></ul>
+</section>
+{% endblock %}
+
+{% block script_extra %}
+<script src="{{ url_for('static', filename='js/card_gacha.js') }}"></script>
+{% endblock %}

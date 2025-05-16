@@ -1,5 +1,4 @@
 {% extends 'base.html' %}
-
 {% block title %}遊戲大廳{% endblock %}
 
 {% block content %}
@@ -7,25 +6,14 @@
 
 <div class="mode-wrap">
   <a class="mode-card" href="{{ url_for('classic_mode') }}">
-     <h3>經典對弈</h3><p>傳統 19×19 對局</p>
+    <h3>經典對弈</h3><p>傳統 19×19 對局</p>
   </a>
   <a class="mode-card" href="{{ url_for('conv_mode') }}">
     <h3>卷積模式</h3><p>一次機會，逆轉局勢!</p>
   </a>
-  <a class="mode-card" href="{{ url_for('card_mode') }}">
+  <a class="mode-card" href="{{ url_for('card_index') }}">
     <h3>卡牌模式</h3><p>圍棋!卡牌對戰!</p>
   </a>
 </div>
-<div id="partial-content"></div>
 {% endblock %}
 
-{% block extra_head %}
-<style>
-  .mode-wrap { display:flex; justify-content:center; gap:48px; margin:48px 0; }
-  .mode-card { width:200px; height:160px; border:2px solid #333;
-               border-radius:10px; text-decoration:none; color:#222;
-               display:flex; flex-direction:column; justify-content:center; align-items:center;
-               transition:.2s ease; background:#fff; }
-  .mode-card:hover { transform:translateY(-6px); box-shadow:0 6px 16px rgba(0,0,0,.3); }
-</style>
-{% endblock %}
