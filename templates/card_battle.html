@@ -1,32 +1,44 @@
-{% extends "card_base.html" %}
-{% block title %}雙人對戰{% endblock %}
+{% extends 'card_base.html' %}
 
-{% block head_extra %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessboardjs@1.0.0/css/chessboard.min.css">
-<script src="{{ url_for('static', filename='js/board.js') }}"></script>
+{% block title %}圍棋！卡牌對戰！{% endblock %}
+
+{% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/board.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/card_battle.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="battle-wrap">
-  <div id="board" class="board"></div>
+<h1 class="text-center mb-4">圍棋！卡牌對戰！</h1>
 
-  <aside class="battle-sidebar">
-    <section class="energy">
-      <label>能量</label>
-      <progress id="energy-bar" value="2" max="6"></progress>
-      <span id="energy-val">2 / 6</span>
+<div class="game-layout">
+  <!-- 主棋盤區 -->
+  <div class="main-panel">
+    <canvas id="board" width="570" height="570" style="border:1px solid #000;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,.2)"></canvas>
+    <div class="info-bar mt-2 flex items-center gap-4">
+      <p class="m-0"><strong>目前輪到：</strong> <span id="turn-indicator">⚫ 玩家(黑)</span></p>
+      <p class="m-0">能量：<span id="energy-value">2</span>/<span id="energy-max">2</span></p>
+    </div>
+    <p id="error-msg" class="text-red-600 h-6"></p>
+    <section class="battle-actions flex gap-2 mt-2">
+      <button class="btn" id="btn-draw">抽牌</button>
+      <button class="btn" id="btn-pass">結束回合</button>
+      <button class="btn" id="btn-reset">重設棋盤</button>
     </section>
+  </div>
 
-    <section class="hand">
-      <h4>手牌</h4>
-      <ul id="hand-cards" class="card-row"></ul>
-    </section>
+  <!-- 手牌與牌組區 -->
+  <aside class="side-panel">
+    <h3 class="text-lg font-semibold mb-1">你的手牌 (<span id="hand-count">0</span>)</h3>
+    <div id="hand-zone" class="hand-zone grid gap-2"></div>
   </aside>
 </div>
 {% endblock %}
 
-{% block script_extra %}
-<script src="https://cdn.jsdelivr.net/npm/chessboardjs@1.0.0/js/chessboard.min.js"></script>
-<script src="{{ url_for('static', filename='js/card_battle.js') }}"></script>
+{% block scripts %}
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+  // 從後端注入 game_id，若路由未提供則為空字串
+  const GAME_ID = "{{ game_id|default('', true) }}";
+</script>
+<script type="module" src="{{ url_for('static', filename='js/card_battle.js') }}"></script>
 {% endblock %}

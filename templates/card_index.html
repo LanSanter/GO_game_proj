@@ -1,11 +1,57 @@
 {% extends "card_base.html" %}
-{% block title %}主頁 ‧ 圍棋!卡牌{% endblock %}
+{% block title %}主頁 ‧ 圍棋!卡牌對戰!{% endblock %}
+
 {% block content %}
+<!-- ✅ 只在這裡新增 style -->
+<style>
+  /* ====== HERO 區 ====== */
+  .hero{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    text-align:center;
+
+    /* ✅ 只留下背景圖本身，不加任何覆蓋層 */
+    background:url("/static/img/bg.jpg") center/cover no-repeat;
+  }
+  .hero h2{
+    font-size:3.5rem;
+    letter-spacing:.25rem;
+    font-weight:900;
+    text-shadow:2px 4px 8px rgba(0,0,0,.6);
+    margin-bottom:3rem;
+  }
+  /* ====== 按鈕 ====== */
+  .btn-group{display:flex;gap:1.5rem;flex-wrap:wrap;}
+  .btn-group .btn{
+    padding:.9rem 2.5rem;
+    border-radius:9999px;
+    font-size:1.25rem;
+    font-weight:700;
+    background:linear-gradient(135deg,#ffdd40 0%,#ff9a3c 100%);
+    color:#1e1e1e;
+    box-shadow:0 6px 12px rgba(0,0,0,.35);
+    transition:transform .25s ease,box-shadow .25s ease;
+  }
+  .btn-group .btn:hover{
+    transform:translateY(-4px) scale(1.05);
+    box-shadow:0 12px 24px rgba(0,0,0,.45);
+  }
+  .btn-group .btn:active{transform:translateY(0) scale(.98);}
+  @media(max-width:600px){
+    .hero h2{font-size:2.25rem}
+    .btn-group .btn{font-size:1rem;padding:.75rem 2rem}
+  }
+</style>
+
 <section class="hero">
-  <h2>圍棋!卡牌</h2>
+  <h2>圍棋!卡牌對戰!</h2>
+
   <div class="btn-group">
     <a class="btn" href="{{ url_for('card_build_deck') }}">構建牌組</a>
-    <a class="btn" href="{{ url_for('card_battle') }}">雙人對戰</a>
+    <a class="btn" href="{{ url_for('card_battle') }}">對戰 AI</a>
     <a class="btn" href="{{ url_for('card_gacha') }}">獲得卡牌</a>
   </div>
 </section>
