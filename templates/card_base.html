@@ -4,7 +4,17 @@
   <meta charset="UTF-8">
   <title>圍棋！卡牌對戰！</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- 共用主樣式 -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/card_main.css') }}">
+
+  <!-- 共用背景：bg.png -->
+  <style>
+    body{
+      background:url("{{ url_for('static', filename='img/bg.png') }}") center/cover fixed no-repeat;
+    }
+  </style>
+
   {% block head_extra %}{% endblock %}
 </head>
 <body>
@@ -22,9 +32,7 @@
     {% block content %}{% endblock %}
   </main>
 
-  {% block script_extra %}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/sortable/1.15.0/Sortable.min.js"
-            integrity="sha512-Rf8J39i4..." crossorigin="anonymous"></script>
-  {% endblock %}
+  {% block script_extra %}{% endblock %}
 </body>
 </html>
+

@@ -1,34 +1,58 @@
 {% extends "card_base.html" %}
-{% block title %}構建牌組{% endblock %}
+{% block head_extra %}
+<style>
+  /* ========= 共用卡牌縮圖 ========= */
+  .card{
+    position:relative;
+    width:100px;aspect-ratio:2/3;
+    background-size:cover;background-position:center;
+    border-radius:8px;cursor:pointer;
+    transition:transform .18s ease,box-shadow .18s ease;
+  }
+  .card:hover{transform:scale(1.4);z-index:100;box-shadow:0 8px 20px rgba(0,0,0,.35);}
+  .badge{
+    position:absolute;top:2px;right:4px;padding:0 6px;
+    font-size:.75rem;font-weight:600;color:#fff;
+    background:#c81e1e;border-radius:9999px;pointer-events:none;
+  }
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:.5rem;}
+
+  /* ========= 右下角預覽視窗 ========= */
+  #preview-card{
+    position:fixed;right:24px;bottom:24px;
+    width:360px;aspect-ratio:2/3;
+    background-size:cover;background-position:center;
+    border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.45);
+    display:none;                       /* 預設隱藏 */
+  }
+  @media(max-width:768px){              /* 行動版縮小 */
+    #preview-card{width:160px;right:12px;bottom:12px;}
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="deck-builder">
-  <section class="deck-workbench">
-    <header>
-      <h3 id="deck-name">牌組 1</h3>
-      <progress id="deck-progress" value="0" max="110"></progress>
-      <span class="small">預算 <span id="card-count">0</span>/110</span>
-    </header>
+<h1 class="text-center mb-4">構建牌組</h1>
 
-    <ul id="deck-slots" class="card-row"></ul>
+<h2>我的卡牌收藏</h2>
+<div id="collection" class="card-grid"></div>
 
-    <h4>我的卡牌</h4>
-    <div id="collection" class="card-grid"></div>
+<h2 class="mt-8">已選牌組 (<span id="deck-count">0</span>/110)</h2>
+<div id="deck" class="card-grid"></div>
 
-    <button class="btn danger" id="export-deck">匯出 / 匯入</button>
-  </section>
+<p class="mt-4 text-sm text-gray-300" id="energy-total">總能量：0</p>
 
-  <aside class="deck-sidebar">
-    <h4>我的牌組</h4>
-    <ul id="deck-list">
-      <li class="deck-item active">牌組 1</li>
-      <li class="deck-item">牌組 2</li>
-    </ul>
-    <button class="btn icon" id="add-deck">＋ 新牌組</button>
-  </aside>
+<div class="mt-6 flex gap-4">
+  <button id="save-deck" class="btn">儲存牌組</button>
+  <button id="clear-deck" class="btn">清空牌組</button>
 </div>
+
+<!-- ★ 右下角大圖預覽框 -->
+<div id="preview-card"></div>
 {% endblock %}
 
 {% block script_extra %}
 <script src="{{ url_for('static', filename='js/card_deckbuilder.js') }}"></script>
 {% endblock %}
+
+

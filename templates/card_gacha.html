@@ -1,14 +1,18 @@
 {% extends "card_base.html" %}
-{% block title %}獲得卡牌{% endblock %}
+{% block head_extra %}
+<style>
+  .card{position:relative;width:100px;aspect-ratio:2/3;background-size:cover;background-position:center;border-radius:8px;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease;}
+  .card:hover{transform:scale(1.4);z-index:100;box-shadow:0 8px 20px rgba(0,0,0,.35);}
+  .badge{position:absolute;top:2px;right:4px;padding:0 5px;font-size:.75rem;font-weight:600;color:#fff;background:#c81e1e;border-radius:9999px;}
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:.5rem;}
+  .hidden{display:none;}
+</style>
+{% endblock %}
 
 {% block content %}
-<section class="gacha-wrap">
-  <div class="pack" id="pack">
-    <span class="shine"></span>
-    <button class="btn large" id="open-btn">開啟卡包</button>
-  </div>
-
-  <h4 id="result-title" class="hidden">獲得卡牌</h4>
+<section class="gacha-wrap text-center">
+  <button class="btn large mt-8" id="open-btn">開啟卡包</button>
+  <h4 id="result-title" class="hidden mt-6">獲得卡牌</h4>
   <ul id="result-grid" class="card-grid"></ul>
 </section>
 {% endblock %}
@@ -16,3 +20,4 @@
 {% block script_extra %}
 <script src="{{ url_for('static', filename='js/card_gacha.js') }}"></script>
 {% endblock %}
+

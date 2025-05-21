@@ -1,72 +1,117 @@
-/* -------- 1. 載入卡池 -------- */
-let cards = {};
-fetch("/api/cards")
-  .then(r=>r.json())
-  .then(data=>{
-    cards = Object.fromEntries(data.map(c=>[c.id, c]));
-    const collection = document.getElementById("collection");
-    data.forEach(c=>{
-      const img = new Image();
-      img.src = card.img; 
-      img.className = "card";
-      img.dataset.cardId = c.id;
-      collection.appendChild(img);
-    });
-    initSortable();
-  });
+/*******************************************************************************
+ * Deck Builder  +  Hover Preview
+ ******************************************************************************/
 
-/* -------- 2. 拖拉 + 計數 -------- */
-function initSortable(){
-  const deckSlots = document.getElementById("deck-slots");
-  new Sortable(collection ,{group:'cards', animation:150});
-  new Sortable(deckSlots,{
-    group:'cards', animation:150,
-    onAdd:updateCount, onRemove:updateCount
-  });
-  updateCount();
+/* === 常數 === */
+const MAX_ID   = 50;
+const MAX_DECK = 40;
+const IMG_DIR  = "/static/img/cards/";   // 圖檔路徑（絕對）
+const LS_OWNED = "ownedCards";
+const LS_DECK  = "savedDeck";
+
+/* === 產生基本資料 === */
+const cards = Array.from({length:MAX_ID},(_,i)=>({id:i+1,energy:(i%3)+1}));
+const cardMap = new Map(cards.map(c=>[c.id,c]));
+
+/* === DOM === */
+const $col   = document.getElementById("collection");
+const $deck  = document.getElementById("deck");
+const $cnt   = document.getElementById("deck-count");
+const $ener  = document.getElementById("energy-total");
+const $prev  = document.getElementById("preview-card");
+
+/* === LocalStorage helpers === */
+const load = k => JSON.parse(localStorage.getItem(k)||"[]");
+const save = (k,v) => localStorage.setItem(k,JSON.stringify(v));
+
+/* === 建立牌縮圖元素 === */
+function makeCard(id, qty){
+  const div = document.createElement("div");
+  div.className = "card";
+  div.dataset.cardId = id;
+  div.dataset.left   = qty;
+  div.style.backgroundImage = `url('${IMG_DIR}${id}.jpg')`;
+
+  const badge = document.createElement("span");
+  badge.className="badge"; badge.textContent=`×${qty}`;
+  div.appendChild(badge);
+
+  /* ── 預覽事件 ── */
+  div.addEventListener("mouseenter",()=>showPreview(id));
+  div.addEventListener("mouseleave",hidePreview);
+
+  return div;
 }
 
-function updateCount(){
-  const slots = [...document.querySelectorAll("#deck-slots .card")];
-  const stone = slots.filter(c=>cards[c.dataset.cardId].type==="stone").length;
-  const non   = slots.length - stone;
-  const total = slots.length;
+/* === 預覽顯示 / 隱藏 === */
+function showPreview(id){
+  $prev.style.backgroundImage = `url('${IMG_DIR}${id}.jpg')`;
+  $prev.style.display = "block";
+}
+function hidePreview(){ $prev.style.display="none"; }
 
-  document.getElementById("deck-progress").value = total;
-  document.getElementById("card-count").textContent = total;
+/* === 初始化牌庫 === */
+function initCollection(){
+  load(LS_OWNED).forEach(o => $col.appendChild(makeCard(o.id,o.qty)));
+}
 
-  // 規則提示
-  let err = "";
-  if (stone!==70)           err = "棋子牌需 70 張";
-  else if (non<40||non>60)  err = "非棋子牌須 40-60 張";
-  else if (total>130)       err = "超過 130 張";
-  else {
-    // 同名 >2 檢查
-    const dup = {};
-    slots.forEach(c=>{
-      const id = c.dataset.cardId;
-      dup[id] = (dup[id]||0)+1;
-      if (cards[id].type!=="stone" && dup[id]>2) err=`${cards[id].name} 超過 2 張`;
-    });
+/* === 初始化牌組 === */
+function initDeck(){
+  load(LS_DECK).forEach(id=>{
+    const src=$col.querySelector(`.card[data-card-id='${id}']`);
+    if(src) moveCard(src,$deck);
+  });
+}
+
+/* === 移動卡片 (庫↔組) === */
+function moveCard(cardEl,target){
+  const inDeck = cardEl.parentElement===$deck;
+
+  if(target===$deck){                           /* 加入牌組 */
+    if($deck.children.length>=MAX_DECK){alert("已滿 110 張");return;}
+    let left=+cardEl.dataset.left-1;
+    cardEl.dataset.left=left;
+    cardEl.querySelector(".badge").textContent=`×${left}`;
+    if(left===0) cardEl.style.display="none";
+    const clone=cardEl.cloneNode(true);
+    clone.removeChild(clone.querySelector(".badge"));
+    clone.removeAttribute("data-left");
+    clone.addEventListener("mouseenter",()=>showPreview(cardEl.dataset.cardId));
+    clone.addEventListener("mouseleave",hidePreview);
+    $deck.appendChild(clone);
+  }else{                                        /* 移回牌庫 */
+    const id=+cardEl.dataset.cardId;
+    const src=$col.querySelector(`.card[data-card-id='${id}']`);
+    src.style.display="";
+    let left=+src.dataset.left+1;
+    src.dataset.left=left;
+    src.querySelector(".badge").textContent=`×${left}`;
+    cardEl.remove();
   }
-  document.getElementById("export-deck").disabled = !!err;
-  document.getElementById("export-deck").textContent = err ? err : "匯出 / 匯入";
+  updateStats();
 }
 
-/* -------- 3. 儲存 -------- */
-document.getElementById("export-deck").onclick = ()=>{
-  const deck = [...document.querySelectorAll("#deck-slots .card")]
-               .map(c=>+c.dataset.cardId);
-  fetch("/api/decks",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({deck})
-  })
-  .then(r=>r.json().then(j=>[r.status,j]))
-  .then(([status,json])=>{
-    if(status===201) alert("牌組已儲存！");
-    else alert(json.error);
-  });
+/* === 點擊事件 === */
+document.addEventListener("click",e=>{
+  const el=e.target.closest(".card");
+  if(!el) return;
+  moveCard(el, el.parentElement===$deck? $col:$deck);
+});
+
+/* === 功能按鈕 === */
+document.getElementById("clear-deck").onclick=()=>[...$deck.children].forEach(c=>moveCard(c,$col));
+document.getElementById("save-deck").onclick=()=>{
+  const ids=[...$deck.children].map(c=>+c.dataset.cardId);
+  save(LS_DECK,ids); alert("牌組已儲存！");
 };
 
-  
+/* === 統計 === */
+function updateStats(){
+  const ids=[...$deck.children].map(c=>+c.dataset.cardId);
+  const energy=ids.reduce((t,id)=>t+cardMap.get(id).energy,0);
+  $cnt.textContent=ids.length;
+  $ener.textContent=`總能量：${energy}`;
+}
+
+/* === init === */
+initCollection(); initDeck(); updateStats();
