@@ -1,23 +1,36 @@
 {% extends "card_base.html" %}
+
 {% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/card_gacha.css') }}">
 <style>
-  .card{position:relative;width:100px;aspect-ratio:2/3;background-size:cover;background-position:center;border-radius:8px;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease;}
-  .card:hover{transform:scale(1.4);z-index:100;box-shadow:0 8px 20px rgba(0,0,0,.35);}
-  .badge{position:absolute;top:2px;right:4px;padding:0 5px;font-size:.75rem;font-weight:600;color:#fff;background:#c81e1e;border-radius:9999px;}
-  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:.5rem;}
-  .hidden{display:none;}
+  .card     {position:relative;width:100px;aspect-ratio:2/3;
+             background-size:cover;background-position:center;
+             border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.2);}
+  .badge    {position:absolute;top:2px;right:4px;padding:0 4px;
+             font-size:.75rem;font-weight:700;color:#fff;
+             background:#c81e1e;border-radius:9999px;}
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
+             gap:.5rem;margin-top:1rem;}
 </style>
 {% endblock %}
 
 {% block content %}
-<section class="gacha-wrap text-center">
-  <button class="btn large mt-8" id="open-btn">開啟卡包</button>
-  <h4 id="result-title" class="hidden mt-6">獲得卡牌</h4>
-  <ul id="result-grid" class="card-grid"></ul>
+<section class="text-center mt-8">
+  <!-- 功能按鈕 -->
+  <button class="btn large" id="btn-open-pack">開啟卡包</button>
+  <button class="btn large ml-4" id="btn-clear-cards">清空卡牌</button>
+
+  <!-- 本次抽到 -->
+  <h4 id="result-title" class="hidden mt-6">本次獲得</h4>
+  <ul id="result-zone" class="card-grid"></ul>
+
+  <!-- 持有總覽 -->
+  <h4 class="mt-8">我的卡牌庫</h4>
+  <ul id="collection-zone" class="card-grid"></ul>
 </section>
 {% endblock %}
 
 {% block script_extra %}
-<script src="{{ url_for('static', filename='js/card_gacha.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/card_gacha.js') }}"></script>
 {% endblock %}
 
