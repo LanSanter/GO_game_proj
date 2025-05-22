@@ -95,6 +95,31 @@ button, .btn {
 button:hover, .btn:hover {
   opacity: 0.85;
 }
+#hand .card{
+  width:80px;height:120px;
+  object-fit:cover;           /* 圖片塞滿卡片框 */
+  border-radius:8px;
+  transition:transform .15s ease, box-shadow .15s ease;
+  cursor:pointer;
+}
 
-/* 能量條 & 其他元件可沿用先前樣式 */
+/* 容器置中顯示 */
+#hand{
+  display:flex;
+  justify-content:center;   /* 置中 */
+  gap:8px;                  /* 卡片間距 */
+  padding:12px 0;
+}
+
+/* 卡片尺寸與浮起動畫 */
+.card{
+  width:90px;               /* 依喜好調 */
+  transition:transform .18s ease, box-shadow .18s ease;
+  z-index:0;
+}
+.card:hover{
+  transform:translateY(-12px) scale(1.08);
+  box-shadow:0 12px 24px rgba(0,0,0,.35);
+  z-index:10;
+}
 
