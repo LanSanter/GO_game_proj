@@ -8,6 +8,24 @@
   --border:         #30363d;
   --border-hover:   #58a6ff;
 }
+/* 遮罩 */
+#overlay-mask{
+  position:fixed; inset:0;
+  background:rgba(0,0,0,.6);
+  display:flex; align-items:center; justify-content:center;
+  z-index:2000; opacity:0; pointer-events:none;
+  transition:opacity .2s;
+}
+#overlay-mask.show{opacity:1; pointer-events:auto;}
+
+/* 中央大卡圖 */
+#overlay-card{
+  width:280px; height:420px;     /* 想多大就調 */
+  background-size:cover; background-position:center;
+  border-radius:12px;
+  box-shadow:0 8px 28px rgba(0,0,0,.55);
+  cursor:pointer;
+}
 
 /* Reset */
 * {
@@ -15,7 +33,6 @@
   padding: 0;
   box-sizing: border-box;
 }
-
 /* 背景圖＋文字 */
 body {
   background: url("../img/bg.png");
@@ -108,7 +125,7 @@ button:hover, .btn:hover {
   display:flex;
   justify-content:center;   /* 置中 */
   gap:8px;                  /* 卡片間距 */
-  padding:12px 0;
+  padding:24px 0;
 }
 
 /* 卡片尺寸與浮起動畫 */
@@ -122,4 +139,3 @@ button:hover, .btn:hover {
   box-shadow:0 12px 24px rgba(0,0,0,.35);
   z-index:10;
 }
-

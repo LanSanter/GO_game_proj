@@ -1,74 +1,122 @@
-// card_effects.js – 定義每張卡牌在對戰時的具體效果
-// 此檔會被 card_battle.js 以 ES module 方式匯入：
-// import { CARD_EFFECTS } from "./card_effects.js";
+// ============================
+// card_effect.js  ‑  完整示範檔
+// ============================
+// 將所有 1 ~ 50 號卡牌先分為幾大類：
+//   1  棋  ‑ 單顆棋子            (id 1)
+//   2  長  ‑ 兩顆連續 (直/橫)    (id 2)
+//   3  尖  ‑ 兩顆斜向            (id 3)
+//   4  跳  ‑ 間隔 1 格兩顆連線   (id 4)
+//   5  大跳 ‑ 間隔 2 格連線     (id 5)
+//   6  飛  ‑ 「日」字對角        (id 6)
+//   7‑50  先預設都 = 單顆棋子
 //
-// ─────────────────────────────────────────────────────────────
-// 匯出一個物件：key = 卡牌 id (數字 1~50)，value = 執行效果的函式
-// 函式接收一個 context 物件，常用屬性如下：
-//   board           → 棋盤物件，需要提供 placeStone(x,y,player)… 等 API
-//   currentPlayer   → 0 (黑) 或 1 (白)
-//   consumeEnergy() → 呼叫後會扣除該卡牌能量（由 battle 模組注入）
-//   discard()       → 把此卡牌從手牌丟到棄牌堆（由 battle 模組注入）
-// 可回傳 promise 以處理非同步（例如等待玩家點擊棋盤）。
+// 🔸 介面設計：
+//   每個 effect 皆為 (board, color, params) ⇒ { ok, board, msg? }
+//   ‑ board  為 2D 陣列 (0=空,1=黑,2=白) ——**務必回傳新的拷貝**
+//   ‑ color  為 1 或 2
+//   ‑ params.anchor = {x,y}; params.dir = 'h'|'v'|'diag1'|'diag2'
+//   ‑ needDir = true 代表出牌時會跳方向面板
 //
-// ★ 注意：以下僅示範 7 張卡，請依實際 50 張能力需求擴充 ★
+// 🔸 若想增加新卡：直接在最下方 `effects[id] = {...}` 填入即可
+// ============================================================
 
-export const CARD_EFFECTS = {
-  // id:1  ──「棋」：放置 1 顆己方棋子到任意空點
-  1: async ({ board, currentPlayer, consumeEnergy, discard }) => {
-    consumeEnergy();                       // 扣能量
-    const { x, y } = await board.waitForClick();   // 讓玩家點棋盤
-    board.placeStone(x, y, currentPlayer);
-    discard();
-  },
+export const CARD_EFFECTS = (() => {
+  const effects = {};
 
-  // id:3  ──「長」：放置 2 顆直/橫相鄰棋子
-  3: async ({ board, currentPlayer, consumeEnergy, discard }) => {
-    consumeEnergy();
-    const line = await board.waitForLine(2, ["horizontal", "vertical"]);
-    line.forEach(({ x, y }) => board.placeStone(x, y, currentPlayer));
-    discard();
-  },
+  // ---------- 工具 ----------
+  const copyBoard = (b) => b.map(row => row.slice());
+  const isInside  = (b, x, y) => y >= 0 && y < b.length && x >= 0 && x < b[0].length;
 
-  // id:5  ──「尖」：放置 2 顆斜向相鄰棋子
-  5: async ({ board, currentPlayer, consumeEnergy, discard }) => {
-    consumeEnergy();
-    const line = await board.waitForLine(2, ["diagonal"]);
-    line.forEach(({ x, y }) => board.placeStone(x, y, currentPlayer));
-    discard();
-  },
+  // ---------- 基本模板 ----------
+  const makeSingle = (cost = 1) => ({
+    cost,
+    needDir: false,
+    effect: (board, color, { anchor }) => {
+      if (!anchor) return { ok: false };
+      const { x, y } = anchor;
+      if (!isInside(board, x, y) || board[y][x] !== 0) return { ok: false, msg: '已有棋子' };
+      const nb = copyBoard(board);
+      nb[y][x] = color;
+      return { ok: true, board: nb };
+    }
+  });
 
-  // id:7  ──「跳」：兩顆棋子中間隔 1 格
-  7: async ({ board, currentPlayer, consumeEnergy, discard }) => {
-    consumeEnergy();
-    const pattern = await board.waitForJump(1); // 自訂 API：跳 1 格
-    pattern.forEach(({ x, y }) => board.placeStone(x, y, currentPlayer));
-    discard();
-  },
+  const makeLine2 = (cost = 2) => ({
+    cost,
+    needDir: true,
+    effect: (board, color, { anchor, dir }) => {
+      if (!anchor || !dir) return { ok: false };
+      const { x, y } = anchor;
+      const dirMap = { h: [1, 0], v: [0, 1] };
+      const [dx, dy] = dirMap[dir] || [1, 0];
+      const x2 = x + dx, y2 = y + dy;
+      if (!isInside(board, x2, y2) || board[y][x] || board[y2][x2]) return { ok: false };
+      const nb = copyBoard(board);
+      nb[y][x] = nb[y2][x2] = color;
+      return { ok: true, board: nb };
+    }
+  });
 
-  // id:9  ──「大跳」：隔 2 格
-  9: async ({ board, currentPlayer, consumeEnergy, discard }) => {
-    consumeEnergy();
-    const pattern = await board.waitForJump(2);
-    pattern.forEach(({ x, y }) => board.placeStone(x, y, currentPlayer));
-    discard();
-  },
+  const makeDiag2 = (cost = 2) => ({
+    cost,
+    needDir: true,
+    effect: (board, color, { anchor, dir }) => {
+      if (!anchor || !dir) return { ok: false };
+      const { x, y } = anchor;
+      const dirMap = { diag1: [1, 1], diag2: [1, -1] };
+      const [dx, dy] = dirMap[dir] || [1, 1];
+      const x2 = x + dx, y2 = y + dy;
+      if (!isInside(board, x2, y2) || board[y][x] || board[y2][x2]) return { ok: false };
+      const nb = copyBoard(board);
+      nb[y][x] = nb[y2][x2] = color;
+      return { ok: true, board: nb };
+    }
+  });
 
-  // id:11 ──「飛」：日字對角（示例）
-  11: async ({ board, currentPlayer, consumeEnergy, discard }) => {
-    consumeEnergy();
-    const coords = await board.waitForPattern([[0,0],[2,1]]); // 自訂入參
-    coords.forEach(({ x, y }) => board.placeStone(x, y, currentPlayer));
-    discard();
-  },
+  const makeJump = (gap, cost = 2) => ({
+    cost,
+    needDir: true,
+    effect: (board, color, { anchor, dir }) => {
+      if (!anchor || !dir) return { ok: false };
+      const { x, y } = anchor;
+      const dirMap = { h: [1, 0], v: [0, 1], diag1: [1, 1], diag2: [1, -1] };
+      const [dx, dy] = dirMap[dir] || [1, 0];
+      const xm = x + dx, ym = y + dy;           // 中間格
+      const x2 = x + dx * (gap + 1), y2 = y + dy * (gap + 1);
+      if (!isInside(board, x2, y2) || board[y][x] || board[y2][x2] || board[ym][xm]) return { ok: false };
+      const nb = copyBoard(board);
+      nb[y][x] = nb[y2][x2] = color;
+      return { ok: true, board: nb };
+    }
+  });
 
-  // id:13 ──「象」：斜線兩顆，距離 2
-  13: async ({ board, currentPlayer, consumeEnergy, discard }) => {
-    consumeEnergy();
-    const diag = await board.waitForDiagonal(2);
-    diag.forEach(({ x, y }) => board.placeStone(x, y, currentPlayer));
-    discard();
+  const makeFly = (cost = 2) => ({
+    cost,
+    needDir: false,
+    effect: (board, color, { anchor }) => {
+      if (!anchor) return { ok: false };
+      const { x, y } = anchor;
+      const x2 = x + 1, y2 = y + 1;
+      if (!isInside(board, x2, y2) || board[y][x] || board[y2][x2]) return { ok: false };
+      const nb = copyBoard(board);
+      nb[y][x] = nb[y2][x2] = color;
+      return { ok: true, board: nb };
+    }
+  });
+
+  // ---------- 卡牌註冊 ----------
+  effects['1'] = makeSingle(1);          // 棋
+  effects['2'] = makeLine2(2);           // 長
+  effects['3'] = makeDiag2(2);           // 尖
+  effects['4'] = makeJump(1, 2);         // 跳
+  effects['5'] = makeJump(2, 2);         // 大跳
+  effects['6'] = makeFly(2);             // 飛
+
+  // 其餘未定義者 → 預設單顆棋子 (cost = 1)
+  for (let id = 7; id <= 50; id++) {
+    if (!effects[id]) effects[id] = makeSingle(1);
   }
 
-  // …… 其餘 50 張請依需求繼續擴充 ……
-};
+  return effects;
+})();
+
