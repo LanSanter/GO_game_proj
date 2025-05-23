@@ -1,68 +1,80 @@
 # server.py
 # -------------------------------------------------------------
 # 目的：沿用 app.py 現有流程，只在 card.battle 部分增加「雙人連線」邏輯
+#       + gacha 抽牌同步 deckbuilder
 # -------------------------------------------------------------
 from app import app, socketio
-from flask import request, send_from_directory
+from flask import request
 from flask_socketio import join_room, leave_room, emit
 from collections import defaultdict, deque, Counter
-import random, uuid, copy
+import random, copy
+from flask import request
+from flask_socketio import SocketIO, join_room, leave_room, emit
 
+
+rooms = {}
 # =============== 遊戲房／狀態管理 ============================
 BOARD_SIZE   = 19
 MAX_HAND     = 10           # 同 card_battle_online.js
 ENERGY_GROW  = {1:2, 5:3, 7:4, 9:5, 11:6}   # 回合數 : 能量上限
 
-# 預設佔位牌組（真正對戰時會被玩家自己的牌組覆蓋）
-def make_deck():
+# -----------------------------------------------------------------
+# utils
+# -----------------------------------------------------------------
+def make_deck() -> deque[int]:
+    """預設佔位牌組（正式對戰時會被玩家 deck 覆蓋）"""
     deck = [1]*70 + list(range(100, 140))
     random.shuffle(deck)
     return deque(deck)
 
 
-def initial_state():
+def initial_state() -> dict:
     """依 card_battle_online.js 的欄位格式產生一份新遊戲狀態"""
     return {
         "turn": 1,                       # 1=黑、2=白
         "turnCount": 1,
         "board": [[0] * BOARD_SIZE for _ in range(BOARD_SIZE)],
-        "hands": {"1": [], "2": []},        # key 需是字串
+        "hands": {"1": [], "2": []},     # key 必須是字串
         "energyCap": {"1": 2, "2": 2},
         "energy": {"1": 2, "2": 2},
     }
 
 
-# ----------------- 牌組驗證 ------------------
-
-def validate_deck(deck: list[int]) -> tuple[bool, str]:
-    """檢查牌組是否符合規範：40 張、ID 1~50、單卡 ≤3"""
-    if len(deck) != 40:
-        return False, f"牌組需 40 張，收到 {len(deck)} 張"
-
-    for cid in deck:
-        if not (1 <= cid <= 50):
-            return False, f"牌 ID {cid} 不在 1~50"
-
-    over = [cid for cid, n in Counter(deck).items() if n > 3]
-    if over:
-        return False, f"以下牌超過 3 張: {over}"
-
+def validate_deck(deck: list[int]):
     return True, ""
 
 
+# -----------------------------------------------------------------
+# 每位玩家僅看到自己完整手牌；對手只看到手牌張數
+# -----------------------------------------------------------------
+def _send_state_per_player(room: "Room") -> None:
+    """
+    room.players : {sid: "1"/"2"}
+    """
+    for sid, pid in room.players.items():
+        s = copy.deepcopy(room.state)
+        opp = "2" if pid == "1" else "1"
+        # 對手手牌只留長度
+        s["hands"][opp] = len(s["hands"][opp])
+        emit("state", s, room=sid)
+
+
+# -----------------------------------------------------------------
+# 房間物件
+# -----------------------------------------------------------------
 class Room:
     """單一對戰房，負責遊戲流程與狀態同步"""
 
     def __init__(self, room_id: str):
         self.id = room_id
         self.state = initial_state()
-        self.decks = {"1": make_deck(), "2": make_deck()}  # 會被玩家 deck 覆蓋
-        self.players = {}  # sid ➜ "1" / "2"
-        self.ready = set()  # 已送出合法牌組的 playerId
+        self.decks = {"1": make_deck(), "2": make_deck()}  # 之後被玩家 deck 覆蓋
+        self.players: dict[str, str] = {}  # sid ➜ "1" / "2"
+        self.ready: set[str] = set()       # 已送出合法牌組的 playerId
         self.started = False
 
     # ---------------- 進房 / 離房 ----------------
-    def add_player(self, sid, pid: str, deck: list[int]):
+    def add_player(self, sid: str, pid: str, deck: list[int]):
         # 房間容量 & 重覆檢查
         if pid in self.players.values():
             emit("error", {"msg": "此 player 已在房"}, room=sid)
@@ -75,7 +87,7 @@ class Room:
         self.players[sid] = pid
         join_room(self.id)
 
-        # ---------------- 牌組驗證 ----------------
+        # 牌組驗證
         ok, msg = validate_deck(deck)
         if not ok:
             emit("error", {"msg": msg}, room=sid)
@@ -92,7 +104,7 @@ class Room:
         else:
             self.start_game()
 
-    def remove_player(self, sid):
+    def remove_player(self, sid: str):
         pid = self.players.pop(sid, None)
         leave_room(self.id)
         return pid
@@ -116,18 +128,18 @@ class Room:
             emit("error", {"msg": f"未知指令 {atype}"}, room=self.id)
             return
 
-        # 動作後同步全房
-        emit("state", self.state, room=self.id)
+        # 動作後同步（每人版本不同）
+        _send_state_per_player(self)
 
     # ---------------- 具體行為 --------------------
-    def draw_card(self, pid):
+    def draw_card(self, pid: str):
         if len(self.state["hands"][pid]) >= MAX_HAND:
             return emit("error", {"msg": "手牌已滿"}, room=self.id)
         if not self.decks[pid]:
             return emit("error", {"msg": "牌堆沒牌了"}, room=self.id)
         self.state["hands"][pid].append(self.decks[pid].popleft())
 
-    def play_card(self, pid, card_id: int, params: dict):
+    def play_card(self, pid: str, card_id: int, params: dict):
         """示範只實作『棋子卡』(id==1)，其他卡片留 TODO"""
         hand = self.state["hands"][pid]
         if card_id not in hand:
@@ -150,6 +162,19 @@ class Room:
         # ---- TODO: 其他卡牌效果 ----
         hand.remove(card_id)
 
+    # ---------------- gacha 抽牌同步 ----------------
+    def receive_gacha(self, pid: str, cards: list[int], sid: str):
+        """
+        cards : list[int] 由前端 gacha.js 傳入
+        只更新自己手牌並回傳 hand:update，不影響對手
+        """
+        free = MAX_HAND - len(self.state["hands"][pid])
+        if free <= 0:
+            return emit("error", {"msg": "手牌已滿"}, room=sid)
+        accepted = cards[:free]
+        self.state["hands"][pid].extend(accepted)
+        emit("hand:update", self.state["hands"][pid], room=sid)
+
     # ---------------- 對戰開始 / 回合結束 ----------------
     def start_game(self):
         if self.started:
@@ -162,7 +187,7 @@ class Room:
             for _ in range(5):
                 self.state["hands"][pid].append(self.decks[pid].popleft())
 
-        emit("start", self.state, room=self.id)
+        _send_state_per_player(self)
 
     def end_turn(self):
         s = self.state
@@ -178,9 +203,10 @@ class Room:
 
 
 # ==================== 房間集合（in-memory） ====================
-rooms = defaultdict(lambda: Room("temp"))
+rooms: dict[str, Room] = defaultdict(lambda: Room("temp"))  # type: ignore
 
-def get_room(room_id):
+
+def get_room(room_id: str) -> Room:
     if room_id not in rooms or rooms[room_id].id == "temp":
         rooms[room_id] = Room(room_id)
     return rooms[room_id]
@@ -189,11 +215,33 @@ def get_room(room_id):
 # ==================== Socket.IO 事件 ===========================
 @socketio.on("join")
 def on_join(data):
-    room_id = data.get("room") or "default"
-    pid = str(data.get("player") or 1)
-    deck = data.get("deck") or []
-    room = get_room(room_id)
-    room.add_player(request.sid, pid, deck)
+    room   = data["room"]          # 同一網址列 ?room=xxx
+    player = data["player"]        # "1" / "2"
+    deck   = data["deck"]
+
+    join_room(room)
+    info = rooms.setdefault(room, {"players": {}, "state": None})
+    info["players"][player] = {"sid": request.sid, "deck": deck}
+
+    if len(info["players"]) == 2:
+        state = initial_state()  # 產生首回合完整 state
+        info["state"] = state
+        socketio.emit("start", state, room=room)       # → 前端 syncStateFromServer
+    else:
+        emit("waiting", "等待另一位玩家加入…")
+
+@socketio.on("disconnect")
+def on_leave():
+    for room, info in list(rooms.items()):
+        for pid, pdata in list(info["players"].items()):
+            if pdata["sid"] == request.sid:
+                del info["players"][pid]
+                if not info["players"]:
+                    del rooms[room]               # 清空空房
+                else:
+                    socketio.emit("waiting", "對手斷線，等待重新連線…", room=room)
+                leave_room(room)
+                return
 
 
 @socketio.on("action")
@@ -205,6 +253,24 @@ def on_action(data):
     if not pid:
         return emit("error", {"msg": "尚未加入房間"})
     room.handle_action(pid, action)
+
+
+# -------- 新增：gacha -> 手牌，同步 deckbuilder ----------
+@socketio.on("gacha:draw")
+def on_gacha_draw(data):
+    """
+    data = {
+        room : str,
+        cards: [int, ...]
+    }
+    """
+    room_id = data.get("room")
+    cards = data.get("cards", [])
+    room = get_room(room_id)
+    pid = room.players.get(request.sid)
+    if not pid:
+        return emit("error", {"msg": "尚未加入房間"})
+    room.receive_gacha(pid, cards, request.sid)
 
 
 @socketio.on("disconnect")
