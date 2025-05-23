@@ -215,21 +215,11 @@ def get_room(room_id: str) -> Room:
 # ==================== Socket.IO 事件 ===========================
 @socketio.on("join")
 def on_join(data):
-    room   = data["room"]          # 同一網址列 ?room=xxx
-    player = data["player"]        # "1" / "2"
-    deck   = data["deck"]
-
-    join_room(room)
-    info = rooms.setdefault(room, {"players": {}, "state": None})
-    info["players"][player] = {"sid": request.sid, "deck": deck}
-
-    if len(info["players"]) == 2:
-        state = initial_state()  # 產生首回合完整 state
-        info["state"] = state
-        socketio.emit("start", state, room=room)       # → 前端 syncStateFromServer
-    else:
-        emit("waiting", "等待另一位玩家加入…")
-
+    room_id = data.get("room", "demo")
+    pid     = data.get("player", "1")
+    deck    = data.get("deck", [])
+    room = get_room(room_id)
+    room.add_player(request.sid, pid, deck)
 @socketio.on("disconnect")
 def on_leave():
     for room, info in list(rooms.items()):
