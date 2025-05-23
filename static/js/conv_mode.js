@@ -2,7 +2,12 @@ import { convolutionByRowUpdate } from './conv.js';
 
 
 const canvas = document.getElementById("board");
+const currentColorRef = { value: null };
 let selectedFilter = null;
+let filterUsed = {
+        black: false,
+        white: false
+    };
 
 window.onload = () => {
     loadFilterCards();
@@ -23,7 +28,9 @@ if (canvas) {
         Array(boardSize).fill(null)
     );
 
-    const currentColorRef = { value: currentColor };
+    currentColorRef.value=currentColor;
+    
+
 
     const socket = io();
     socket.on("connect", () => {
@@ -136,9 +143,16 @@ if (canvas) {
         currentColor = "black";
     }
 
+    
+
     // 暴露到全局函數
     document.getElementById("apply-btn").onclick = () => {
         if (!selectedFilter) return;
+        if (filterUsed[currentColorRef.value]) {
+            const msgBox = document.getElementById("error-msg");
+            msgBox.textContent = `${ currentColorRef.value === "black" ? "黑方" : "白方"} 已使用過卷積卡！`;
+            return;
+        }
         convolutionByRowUpdate(
             boardState,
             boardSize,
@@ -152,6 +166,7 @@ if (canvas) {
             gameId,
             selectedFilter.matrix
         );
+        filterUsed[currentColorRef.value] = true;
     };
 
     window.resetBoard = resetBoard;
@@ -166,11 +181,21 @@ function loadFilterCards() {
             const list = document.getElementById('filter-list');
             list.innerHTML = '';
             filters.forEach((filter, idx) => {
-                const card = document.createElement('div');
+               const card = document.createElement('div');
                 card.className = 'filter-card';
                 card.dataset.id = filter.id;
                 card.dataset.matrix = JSON.stringify(filter.matrix);
-                card.innerHTML = `<strong>${filter.name}</strong>`;
+                
+                // 建立矩陣 HTML
+                let matrixHTML = '<div class="matrix">';
+                filter.matrix.forEach(row => {
+                    row.forEach(cell => {
+                        matrixHTML += `<div class="cell">${cell}</div>`;
+                    });
+                });
+                matrixHTML += '</div>';
+                
+                card.innerHTML =`<strong>${filter.name}</strong>${matrixHTML}`;
                 card.onclick = () => selectCard(card);
                 list.appendChild(card);
             });
@@ -178,7 +203,16 @@ function loadFilterCards() {
 }
 
 function selectCard(card) {
-    if (selectedFilter) return; // 已選擇過，不能再選
+    if (selectedFilter) return;
+
+    const current = currentColorRef.value;
+
+    if (filterUsed[current]) {
+        const msgBox = document.getElementById("error-msg");
+        msgBox.textContent = `${current === "black" ? "黑方" : "白方"} 已使用過卷積卡！`;
+        return;
+    }
+
     card.classList.add('flipped');
     card.innerHTML = "已選擇";
     selectedFilter = {
@@ -187,6 +221,7 @@ function selectCard(card) {
     };
     document.getElementById("apply-btn").disabled = false;
 }
+
 
 
 

@@ -7,7 +7,8 @@
 .filter-card {
     width: 90%;
     max-width: 200px;
-    height: 140px;
+    height: auto;
+    min-height: 140px;
     background-color: #eee;
     border: 1px solid #999;
     padding: 10px;
@@ -20,4 +21,26 @@
     background-color: #ccc;
     color: gray;
     pointer-events: none;
+}
+.matrix {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    margin-top: 10px;
+    padding: 5px;
+    background-color: #d4b98f;
+    border-radius: 10px;
+    box-shadow: inset 0 0 5px #aaa;
+}
+
+.cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 20px;
+    height: 40px;
+    background-color: #e7d1aa;
+    border-radius: 6px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
 }
