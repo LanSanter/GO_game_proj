@@ -63,7 +63,7 @@ function renderCollection() {
   );
 }
 
-/* === 渲染牌組 === */
+/* === 渲染牌組（先清空再依 loadDeck 呼 moveCard） === */
 function renderDeck() {
   if (!$deck) return;
   $deck.innerHTML = "";
@@ -74,37 +74,62 @@ function renderDeck() {
   updateStats();
 }
 
-/* === 移動卡片 === */
+/* === 移動卡片（含堆疊顯示） === */
 function moveCard(cardEl, target, update = true) {
   if (!$col || !$deck) return;
   const intoDeck = target === $deck;
+  const id = +cardEl.dataset.cardId;
 
   if (intoDeck) {
+    // 牌組已滿檢查
     if ($deck.children.length >= MAX_DECK) {
       alert(`牌組已滿 ${MAX_DECK} 張`);
       return;
     }
+    // 調整收藏庫數量
     const left = (+cardEl.dataset.left || 0) - 1;
     cardEl.dataset.left = left;
-    cardEl.querySelector(".badge").textContent = `×${left}`;
+    const badgeCol = cardEl.querySelector(".badge");
+    badgeCol.textContent = `×${left}`;
     if (left === 0) cardEl.style.display = "none";
 
-    const clone = cardEl.cloneNode(true);
-    clone.removeChild(clone.querySelector(".badge"));
-    clone.removeAttribute("data-left");
-    clone.addEventListener("mouseenter", () => showPreview(cardEl.dataset.cardId));
-    clone.addEventListener("mouseleave", hidePreview);
-    $deck.appendChild(clone);
+    // 若牌組已有此卡，則增加堆疊
+    let existing = $deck.querySelector(`.card[data-card-id='${id}']`);
+    if (existing) {
+      let badge = existing.querySelector('.badge');
+      let count = parseInt(badge.textContent.slice(1)) + 1;
+      badge.textContent = `×${count}`;
+    } else {
+      // 否則新建卡片並加上 Badge
+      const clone = cardEl.cloneNode(true);
+      clone.removeChild(clone.querySelector(".badge"));
+      clone.removeAttribute("data-left");
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = '×1';
+      clone.appendChild(badge);
+      clone.addEventListener("mouseenter", () => showPreview(id));
+      clone.addEventListener("mouseleave", hidePreview);
+      $deck.appendChild(clone);
+    }
 
   } else {
-    const id  = +cardEl.dataset.cardId;
+    // 從牌組移回收藏庫
     const src = $col.querySelector(`.card[data-card-id='${id}']`);
     if (!src) return;
     src.style.display = "";
     const left = (+src.dataset.left || 0) + 1;
     src.dataset.left = left;
     src.querySelector(".badge").textContent = `×${left}`;
-    cardEl.remove();
+
+    // 處理牌組堆疊
+    let badge = cardEl.querySelector('.badge');
+    let count = parseInt(badge.textContent.slice(1));
+    if (count > 1) {
+      badge.textContent = `×${count - 1}`;
+    } else {
+      cardEl.remove();
+    }
   }
   if (update) updateStats();
 }
@@ -112,9 +137,16 @@ function moveCard(cardEl, target, update = true) {
 /* === 更新統計 === */
 function updateStats() {
   if (!$cnt || !$ener || !$deck) return;
-  const ids = [...$deck.children].map(c => +c.dataset.cardId);
-  const energy = ids.reduce((t, id) => t + cardMap.get(id).energy, 0);
-  $cnt.textContent  = ids.length;
+  // 計算總張數與能量
+  let total = 0;
+  let energy = 0;
+  [...$deck.children].forEach(c => {
+    const id = +c.dataset.cardId;
+    const count = parseInt(c.querySelector('.badge').textContent.slice(1));
+    total += count;
+    energy += cardMap.get(id).energy * count;
+  });
+  $cnt.textContent  = total;
   $ener.textContent = `總能量：${energy}`;
 }
 
@@ -145,7 +177,12 @@ function init() {
       [...$deck.children].forEach(c => moveCard(c, $col));
     });
     document.getElementById("save-deck")?.addEventListener("click", () => {
-      const ids = [...$deck.children].map(c => +c.dataset.cardId);
+      const ids = [];
+      [...$deck.children].forEach(c => {
+        const id = +c.dataset.cardId;
+        const count = parseInt(c.querySelector('.badge').textContent.slice(1));
+        for (let i=0; i<count; i++) ids.push(id);
+      });
       saveDeck(ids);
       alert("牌組已儲存！");
     });
