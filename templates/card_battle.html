@@ -2,8 +2,39 @@
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/board.css') }}">
 <style>
-  .card{position:relative;width:80px;aspect-ratio:2/3;background-size:cover;background-position:center;border-radius:6px;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease;}
-  .card:hover{transform:scale(1.3);z-index:100;box-shadow:0 6px 16px rgba(0,0,0,.35);}
+  /* ===== 共用卡牌縮圖 ===== */
+  .card{
+    position:relative;width:100px;aspect-ratio:2/3;
+    background-size:cover;background-position:center;
+    border-radius:8px;cursor:pointer;
+    transition:transform .18s ease,box-shadow .18s ease;
+  }
+  .card:hover{transform:scale(1.35);z-index:100;box-shadow:0 8px 20px rgba(0,0,0,.4);}  
+  .card.selected{transform:scale(1.45) translateY(-40px);box-shadow:0 12px 28px rgba(0,0,0,.55);}  
+  .card .cost{position:absolute;top:2px;right:4px;padding:0 6px;font-size:.8rem;font-weight:600;color:#fff;background:#c81e1e;border-radius:9999px;pointer-events:none;}
+
+  /* ===== 手牌區（固定在視窗底部置中） ===== */
+  #hand-zone{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    display:flex;gap:20px;z-index:2000;
+    padding:4px 12px;border-radius:12px;
+    background:rgba(0,0,0,.3);backdrop-filter:blur(4px);
+  }
+  @media (max-width:768px) {
+    #hand-zone{gap:12px;}
+  }
+
+  /* ===== 右下角預覽視窗 ===== */
+  #card-preview{
+    position:fixed;right:24px;bottom:24px;width:240px;aspect-ratio:2/3;
+    background-size:cover;background-position:center;
+    border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.45);
+    opacity:0;transition:opacity .2s;pointer-events:none;
+  }
+  #card-preview.show{opacity:1;}
+  @media (max-width:768px) {
+    #card-preview{width:160px;right:12px;bottom:12px;}
+  }
 </style>
 {% endblock %}
 
@@ -12,10 +43,12 @@
 <div class="game-layout">
   <div class="main-panel">
     <canvas id="board" width="570" height="570" style="border:1px solid #000;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,.2)"></canvas>
+
     <div class="info-bar mt-2 flex items-center gap-4">
       <p class="m-0"><strong>目前輪到：</strong> <span id="turn-indicator">⚫ 玩家(黑)</span></p>
       <p class="m-0">能量：<span id="energy-value">2</span>/<span id="energy-max">2</span></p>
     </div>
+
     <p id="error-msg" class="text-red-600 h-6"></p>
     <section class="battle-actions flex gap-2 mt-2">
       <button class="btn" id="btn-pass">結束回合</button>
@@ -23,7 +56,14 @@
     </section>
   </div>
 </div>
+
+<!-- ★ 手牌顯示區（由 card_battle.js 動態填入） -->
+<div id="hand-zone"></div>
+
+<!-- ★ 右下角大圖預覽框（由 card_battle.js 控制 show/hide） -->
+<div id="card-preview"></div>
 {% endblock %}
+
 {% block script_extra %}
-<script type="module" src="{{ url_for('static', filename='js/card_battle.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/card_battle.js') }}" defer></script>
 {% endblock %}
