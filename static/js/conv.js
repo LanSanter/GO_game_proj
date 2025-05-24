@@ -20,13 +20,11 @@ function getPaddedBoard(board, padding = 1) {
     return padded;
 }
 
-async function convolutionByRowUpdate(boardState, boardSize, emitPlaceStone, currentColorRef, clearBoard ,gameId, filterMatrix) {
+async function convolutionByRowUpdate(boardState, boardSize, emitPlaceStone, currentColorRef, UpdateColor ,gameId, filterMatrix, socket) {
     const padded = getPaddedBoard(boardState);
     const newMoves = [];
 
-    const socket = io()
     // 清除棋盤（直接清空狀態，不呼叫 resetBoard
-    clearBoard();
     for (let y = 0; y < boardSize; y++) {
         boardState[y].fill(null);
     }
@@ -35,7 +33,7 @@ async function convolutionByRowUpdate(boardState, boardSize, emitPlaceStone, cur
     })
     
 
-    const curcolor = currentColorRef.value;
+    const curcolor = (currentColorRef.value === "black")?"white":"black"
 
     function delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
@@ -65,6 +63,7 @@ async function convolutionByRowUpdate(boardState, boardSize, emitPlaceStone, cur
             await delay(15);
         }
     }
+    UpdateColor(curcolor);
 
     currentColorRef.value = curcolor;
 }

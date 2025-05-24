@@ -99,6 +99,14 @@ def handle_place_stone(data):
     result = game_manager.place_stone(game_id, x, y, color)
     emit("update_board", result, broadcast=True)
 
+@socketio.on("conv_place_stone")
+def handle_cplace_stone(data):
+    game_id = data["game_id"]
+    x, y = data["x"], data["y"]
+    color = data["color"]
+    result = game_manager.conv_place_stone(game_id, x, y, color)
+    emit("update_board", result, broadcast=True)
+
 @socketio.on("new_game")
 def handle_new_game():
     game_id = game_manager.create_game()
@@ -123,8 +131,9 @@ def random_filters():
 def handle_apply_convolution(data):
     game_id = data.get("game_id")
     filter_name = data.get("filter")
+    turn = data.get("color")
     
-    result = game_manager.apply_convolution(game_id, filter_name)
+    result = game_manager.apply_convolution(game_id, filter_name, turn)
     emit("convolution_applied", result, broadcast=True)
 
 # ----------------------  卡牌系統  ----------------------

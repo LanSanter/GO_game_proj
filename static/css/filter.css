@@ -17,11 +17,17 @@
     transition: 0.3s;
 }
 
+.filter-card.selected {
+    background-color: yellowgreen;
+}
+
 .filter-card.flipped {
     background-color: #ccc;
     color: gray;
     pointer-events: none;
+    border: 1px dashed #888;
 }
+
 .matrix {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
