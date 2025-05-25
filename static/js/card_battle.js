@@ -1,6 +1,5 @@
 /****************************************************************
- * card_battle.js  —— v2.3.1
- * - 高亮位置改為交叉點 (intersection)，以小圓圈標示
+ * card_battle.js  —— v2.5.0  (preview + right-click rotation)
  ****************************************************************/
 import { CARD_EFFECTS } from "./card_effect.js";
 import { io } from "https://cdn.socket.io/4.7.2/socket.io.esm.min.js";
@@ -45,11 +44,12 @@ let energy     = 2;
 let hand       = [];
 let playerId   = playerIdStr;
 
-/* 手牌選取 / 高亮暫存 */
+/* 手牌選取 / 高亮 & 預覽暫存 */
 let selectedCardId = null;
 let selectedCardEl = null;
-let pendingParams  = {};
-let highlightMap   = [];
+let pendingParams  = {};           // { anchor:{x,y}, dir:'h' }
+let highlightMap   = [];           // [[r,c], ...]
+let previewStones  = [];           // [[r,c], ...] 半透明展示
 
 /* -------------------- Socket 事件 -------------------- */
 socket.on("waiting", m => { overlay.textContent = m; overlay.style.display="flex"; });
@@ -70,9 +70,10 @@ document.addEventListener("DOMContentLoaded", () => {
   RADIUS    = GRID_SIZE * 0.42;
 
   injectPreviewBox();
-  canvas.addEventListener("click", onBoardClick);
-  canvas.addEventListener("mousemove", onBoardHover);
-  canvas.addEventListener("mouseleave", redraw);
+  canvas.addEventListener("click",       onBoardClick);
+  canvas.addEventListener("mousemove",   onBoardHover);
+  canvas.addEventListener("mouseleave",  ()=>{previewStones.length=0; redraw();});
+  canvas.addEventListener("contextmenu", onRightClick);
   passBtn?.addEventListener("click", () => sendAction({type:"endTurn"}));
 
   redraw();
@@ -94,26 +95,24 @@ function syncState(s){
   redrawHand();
 }
 function updateEnergy(){
-  if (energyNow)  energyNow.textContent  = energy;
+  if (energyNow)   energyNow.textContent  = energy;
   if (energyMaxEl) energyMaxEl.textContent = energyCap;
 }
 
 /* -------------------- 行為送出 -------------------- */
 function sendAction(o){ socket.emit("action",{room:ROOM_ID,action:o}); }
+
 function emitPlay(){
   const p = { ...pendingParams };
 
-  // 伺服器目前只吃 params.x / params.y
-  if (selectedCardId === 1 && p.anchor) {
+  if (p.anchor){                 // 一律轉成 x,y
     p.x = p.anchor.x;
     p.y = p.anchor.y;
     delete p.anchor;
   }
-
-  sendAction({ type: "playCard", cardId: selectedCardId, params: p });
+  sendAction({ type:"playCard", cardId:selectedCardId, params:p });
   clearSelection();
 }
-
 
 /* -------------------- 手牌 UI -------------------- */
 function redrawHand(){
@@ -123,7 +122,8 @@ function redrawHand(){
 function createCardEl(id){
   const d=CARD_EFFECTS[id]||{cost:0};
   const el=document.createElement("div");
-  el.className="card"; el.style.backgroundImage=`url('/static/img/cards/${id}.jpg')`;
+  el.className="card";
+  el.style.backgroundImage=`url('/static/img/cards/${id}.jpg')`;
   el.dataset.id=id;
   const tag=document.createElement("span");
   tag.className="cost"; tag.textContent=d.cost; el.appendChild(tag);
@@ -139,12 +139,13 @@ function selectCard(el,id){
   selectedCardEl?.classList.remove("selected");
   el.classList.add("selected");
   selectedCardEl=el; selectedCardId=id;
-  pendingParams={}; highlightAnchors(id);
+  pendingParams={dir: CARD_EFFECTS[id].needDir ? "h" : undefined};
+  highlightAnchors(id);
 }
 function clearSelection(){
   selectedCardEl?.classList.remove("selected");
   selectedCardEl=null; selectedCardId=null;
-  pendingParams={}; highlightMap=[]; redraw();
+  pendingParams={}; highlightMap=[]; previewStones=[]; redraw();
 }
 
 /* -------------------- 預覽框 -------------------- */
@@ -167,7 +168,7 @@ function hidePreview(){document.getElementById("card-preview")?.classList.remove
 /* -------------------- 棋盤繪製 -------------------- */
 function redraw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  drawBoard(); drawStones();
+  drawBoard(); drawStones(); drawPreview();
   highlightMap.forEach(([r,c])=>drawHighlight(r,c));
 }
 function drawBoard(){
@@ -188,18 +189,29 @@ function drawBoard(){
   }
 }
 function drawStones(){
-  board.forEach((row,r)=>row.forEach((v,c)=>v&&drawStone(r,c,v)));
+  board.forEach((row,r)=>row.forEach((v,c)=>v&&drawStone(r,c,v,false)));
 }
-function drawStone(r,c,color){
+function drawPreview(){
+  previewStones.forEach(([r,c])=>drawStone(r,c,current,true));
+}
+function drawStone(r,c,color,ghost=false){
   const x=GRID_SIZE*(c+1),y=GRID_SIZE*(r+1);
   const g=ctx.createRadialGradient(x-RADIUS*.4,y-RADIUS*.4,RADIUS*.1,x,y,RADIUS*1.05);
-  if(color===1){g.addColorStop(0,"#888");g.addColorStop(.3,"#444");g.addColorStop(1,"#000");}
-  else         {g.addColorStop(0,"#fff");g.addColorStop(.55,"#eee");g.addColorStop(1,"#aaa");}
+  if(color===1){
+    g.addColorStop(0, ghost ? "rgba(136,136,136,.5)" : "#888");
+    g.addColorStop(.3,ghost?"rgba(68,68,68,.5)":"#444");
+    g.addColorStop(1,ghost?"rgba(0,0,0,.5)":"#000");
+  }else{
+    g.addColorStop(0, ghost ? "rgba(255,255,255,.5)" : "#fff");
+    g.addColorStop(.55,ghost?"rgba(238,238,238,.5)":"#eee");
+    g.addColorStop(1,ghost?"rgba(170,170,170,.5)":"#aaa");
+  }
   ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,RADIUS,0,Math.PI*2); ctx.fill();
-  ctx.strokeStyle="rgba(0,0,0,.5)"; ctx.stroke();
+  ctx.strokeStyle=ghost?"rgba(0,0,0,.25)":"rgba(0,0,0,.5)";
+  ctx.stroke();
 }
 
-/* ======== ★ 新的 Highlight：交叉點小圓圈 ======== */
+/* ======== Highlight：交叉點小圓圈 ======== */
 function drawHighlight(r,c){
   const x=GRID_SIZE*(c+1),y=GRID_SIZE*(r+1);
   ctx.fillStyle="rgba(241, 165, 23, 0.6)";
@@ -207,7 +219,29 @@ function drawHighlight(r,c){
 }
 
 /* -------------------- 棋盤互動 -------------------- */
-function onBoardHover(_){}
+function onBoardHover(e){
+  previewStones.length=0;
+  if(!selectedCardId)return;
+
+  const rect=canvas.getBoundingClientRect();
+  const c = Math.round((e.clientX - rect.left - GRID_SIZE) / GRID_SIZE);
+  const r = Math.round((e.clientY - rect.top  - GRID_SIZE) / GRID_SIZE);
+  if(r<0||r>=BOARD_SIZE||c<0||c>=BOARD_SIZE){ redraw(); return; }
+
+  if(!highlightMap.some(([hr,hc])=>hr===r&&hc===c)){ redraw(); return; }
+
+  const dir = pendingParams.dir || "h";
+  const eff = CARD_EFFECTS[selectedCardId].effect(board,current,{anchor:{x:c,y:r},dir});
+  if(eff.ok && eff.board){
+    // 比對差異，把新落子的交叉點存進 previewStones
+    for(let y=0;y<BOARD_SIZE;y++)
+      for(let x=0;x<BOARD_SIZE;x++)
+        if(board[y][x]===0 && eff.board[y][x]===current)
+          previewStones.push([y,x]);
+  }
+  redraw();
+}
+
 function onBoardClick(e){
   if(!selectedCardId)return;
   const rect=canvas.getBoundingClientRect();
@@ -217,35 +251,36 @@ function onBoardClick(e){
   if(!highlightMap.some(([hr,hc])=>hr===r&&hc===c))return;
 
   pendingParams.anchor={x:c,y:r};
-  const needDir=CARD_EFFECTS[selectedCardId].needDir;
-  if(needDir&&!pendingParams.dir){
-    showDirPanel(e.clientX,e.clientY,d=>{pendingParams.dir=d;emitPlay();});
-  }else emitPlay();
+  emitPlay();
+}
+
+function onRightClick(e){
+  if(!selectedCardId) return;
+  const card = CARD_EFFECTS[selectedCardId];
+  if(!card.needDir)   return;
+
+  e.preventDefault();    // 取消瀏覽器右鍵選單
+  // 方向循環
+  const seq = ["h","v","diag1","diag2"];
+  let idx = seq.indexOf(pendingParams.dir||"h");
+  idx = (idx+1)%seq.length;
+  pendingParams.dir = seq[idx];
+  highlightAnchors(selectedCardId);   // 更新合法格
 }
 
 /* -------------------- 高亮計算 -------------------- */
 function highlightAnchors(id){
   highlightMap.length=0;
+  previewStones.length=0;
+  const dir = pendingParams.dir || "h";
   for(let r=0;r<BOARD_SIZE;r++)
     for(let c=0;c<BOARD_SIZE;c++)
-      if(CARD_EFFECTS[id].effect(board,current,{anchor:{x:c,y:r},dir:"h"}).ok)
+      if(CARD_EFFECTS[id].effect(board,current,{anchor:{x:c,y:r},dir}).ok)
         highlightMap.push([r,c]);
   redraw();
 }
 
-/* -------------------- 方向面板 -------------------- */
-function showDirPanel(px,py,cb){
-  const d=document.createElement("div");
-  d.className="dir-panel";
-  Object.assign(d.style,{position:"fixed",left:px+"px",top:py+"px",
-    display:"grid",gridTemplateColumns:"repeat(2,40px)",gap:"4px",
-    background:"#222",padding:"6px",borderRadius:"6px",zIndex:2000});
-  d.innerHTML=`<button data-d="h">─</button><button data-d="v">│</button>
-               <button data-d="diag1">＼</button><button data-d="diag2">／</button>`;
-  document.body.appendChild(d);
-  d.onclick=e=>{const dir=e.target.dataset.d;if(dir){cb(dir);d.remove();}};
-}
-
 /* -------------------- 工具 -------------------- */
-function toast(m){console.log(m);}
+function toast(m){console.log(m);}  // 可替換成正式 UI
+
 export { board,current,GRID_SIZE };
