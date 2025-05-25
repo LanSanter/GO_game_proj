@@ -10,7 +10,9 @@ class UserManager:
 
     def verify_user(self, username, password):
         user = User.query.filter_by(username=username).first()
-        return user and user.password_hash == self.hash_password(password)
+        if user:
+            return user.password_hash == self.hash_password(password)
+        return False
 
     def register_user(self, username, password):
         if User.query.filter_by(username=username).first():
