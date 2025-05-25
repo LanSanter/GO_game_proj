@@ -1,126 +1,165 @@
-# server.py
-# -------------------------------------------------------------
-# 目的：沿用 app.py 現有流程，只在 card.battle 部分增加「雙人連線」邏輯
-#       + gacha 抽牌同步 deckbuilder
+# server.py  —— formal GO-card battle rules (multi-stone shapes 1-12)
 # -------------------------------------------------------------
 from app import app, socketio
 from flask import request
 from flask_socketio import join_room, leave_room, emit
-from collections import defaultdict, deque, Counter
+from collections import defaultdict, deque
 import random, copy
-from flask import request
-from flask_socketio import SocketIO, join_room, leave_room, emit
 
-
-rooms = {}
-# =============== 遊戲房／狀態管理 ============================
+# ---------- 遊戲參數 ----------
 BOARD_SIZE   = 19
-MAX_HAND     = 10           # 同 card_battle_online.js
-ENERGY_GROW  = {1:2, 5:3, 7:4, 9:5, 11:6}   # 回合數 : 能量上限
+MAX_HAND     = 10
+ENERGY_GROW  = {1: 2, 5: 3, 7: 4, 9: 5, 11: 6}
+MAX_ENERGY   = 6
+DIRECTIONS   = [(-1, 0), (1, 0), (0, -1), (0, 1)]      # 上下左右
 
-# -----------------------------------------------------------------
-# utils
-# -----------------------------------------------------------------
+# ---------- 形狀定義 ----------
+# anchor (0,0) 為使用者點擊的位置
+SHAPES = {
+    1:  {"cost": 1, "vectors": [(0, 0)],                     "dirs": ["h"]},
+    2:  {"cost": 2, "vectors": [(0, 0), (1, 0)],             "dirs": ["h", "v"]},           # 長
+    3:  {"cost": 2, "vectors": [(0, 0), (1, 1)],             "dirs": ["diag1", "diag2"]},   # 尖
+    4:  {"cost": 2, "vectors": [(0, 0), (2, 0)],             "dirs": ["h", "v"]},           # 跳
+    5:  {"cost": 2, "vectors": [(0, 0), (3, 0)],             "dirs": ["h", "v"]},           # 大跳
+    6:  {"cost": 2, "vectors": [(0, 0), (1, 2)],             "dirs": ["h", "v"]},           # 飛（日字對角）
+    7:  {"cost": 2, "vectors": [(0, 0), (1, 1)],             "dirs": ["diag1", "diag2"]},   # 象（田字對角）
+    8:  {"cost": 4, "vectors": [(0, 0), (1, 0), (2, 0), (2, 1)], "dirs": ["h", "v"]},       # L
+    9:  {"cost": 4, "vectors": [(0, 0), (1, 0), (1, 1), (2, 1)], "dirs": ["h"]},            # 閃電 (Z)
+    10: {"cost": 4, "vectors": [(0, 0), (-1, 1), (0, 1), (1, 1)], "dirs": ["h", "v"]},      # Y
+    11: {"cost": 4, "vectors": [(-1, 0), (0, 0), (1, 0), (0, 1)], "dirs": ["h", "v"]},      # ㄒ (T)
+    12: {"cost": 5, "vectors": None,                         "dirs": ["random5"]},          # 投石器
+}
+
+# ---------- 向量轉向工具 ----------
+def rotate(vecs, dir_name):
+    if dir_name in ("h", None):
+        return vecs
+    if dir_name == "v":            # 90° 旋
+        return [(-dy, dx) for dx, dy in vecs]
+    if dir_name == "diag1":        # 主對角 ↘
+        return [(dy, dx) for dx, dy in vecs]
+    if dir_name == "diag2":        # 副對角 ↙
+        return [(-dy, -dx) for dx, dy in vecs]
+    return vecs                    # 其他簡單鏡像可自行加
+
+# ---------- 牌組 ----------
 def make_deck() -> deque[int]:
-    """預設佔位牌組（正式對戰時會被玩家 deck 覆蓋）"""
-    deck = [1]*70 + list(range(100, 140))
-    random.shuffle(deck)
-    return deque(deck)
+    """簡單示範：混入 1-12 號棋形卡各若干張"""
+    cards = (
+        [1] * 40 +
+        [2, 3, 4, 5] * 6 +
+        [6, 7] * 5 +
+        [8, 9, 10, 11] * 4 +
+        [12] * 3
+    )
+    random.shuffle(cards)
+    return deque(cards)
 
-
-def initial_state() -> dict:
-    """依 card_battle_online.js 的欄位格式產生一份新遊戲狀態"""
+# ---------- 初始狀態 ----------
+def initial_state():
     return {
-        "turn": 1,                       # 1=黑、2=白
+        "turn": 1,
         "turnCount": 1,
         "board": [[0] * BOARD_SIZE for _ in range(BOARD_SIZE)],
-        "hands": {"1": [], "2": []},     # key 必須是字串
-        "energyCap": {"1": 2, "2": 2},
-        "energy": {"1": 2, "2": 2},
+        "hands":      {"1": [], "2": []},
+        "energyCap":  {"1": 2,  "2": 2},
+        "energy":     {"1": 2,  "2": 2},
     }
 
-
-def validate_deck(deck: list[int]):
-    return True, ""
-
-
-# -----------------------------------------------------------------
-# 每位玩家僅看到自己完整手牌；對手只看到手牌張數
-# -----------------------------------------------------------------
-def _send_state_per_player(room: "Room") -> None:
-    """
-    room.players : {sid: "1"/"2"}
-    """
+# ---------- 狀態推送 ----------
+def _push_state(room):
     for sid, pid in room.players.items():
-        s = copy.deepcopy(room.state)
-        opp = "2" if pid == "1" else "1"
-        # 對手手牌只留長度
-        s["hands"][opp] = len(s["hands"][opp])
-        emit("state", s, room=sid)
+        view = copy.deepcopy(room.state)
+        opp  = "2" if pid == "1" else "1"
+        view["hands"][opp] = len(view["hands"][opp])
+        emit("state", view, room=sid)
 
-
-# -----------------------------------------------------------------
-# 房間物件
-# -----------------------------------------------------------------
+# ---------- 房間 ----------
 class Room:
-    """單一對戰房，負責遊戲流程與狀態同步"""
-
-    def __init__(self, room_id: str):
-        self.id = room_id
-        self.state = initial_state()
-        self.decks = {"1": make_deck(), "2": make_deck()}  # 之後被玩家 deck 覆蓋
-        self.players: dict[str, str] = {}  # sid ➜ "1" / "2"
-        self.ready: set[str] = set()       # 已送出合法牌組的 playerId
+    def __init__(self, rid: str):
+        self.id      = rid
+        self.state   = initial_state()
+        self.decks   = {"1": make_deck(), "2": make_deck()}
+        self.players = {}          # sid ➜ "1" / "2"
+        self.ready   = set()
         self.started = False
 
-    # ---------------- 進房 / 離房 ----------------
-    def add_player(self, sid: str, pid: str, deck: list[int]):
-        # 房間容量 & 重覆檢查
-        if pid in self.players.values():
-            emit("error", {"msg": "此 player 已在房"}, room=sid)
-            return
-        if len(self.players) >= 2:
-            emit("error", {"msg": "房間已滿"}, room=sid)
-            return
+    # ===== 工具 =====
+    def _inside(self, x: int, y: int) -> bool:
+        return 0 <= x < BOARD_SIZE and 0 <= y < BOARD_SIZE
 
-        # 加入房間
+    def _get_group_and_liberties(self, x: int, y: int):
+        col = self.state["board"][y][x]
+        if col == 0:
+            return [], True
+        vis, group, has_lib = set(), [], False
+        stack = [(x, y)]
+        while stack:
+            cx, cy = stack.pop()
+            if (cx, cy) in vis:
+                continue
+            vis.add((cx, cy))
+            group.append((cx, cy))
+            for dx, dy in DIRECTIONS:
+                nx, ny = cx + dx, cy + dy
+                if not self._inside(nx, ny):
+                    continue
+                nb = self.state["board"][ny][nx]
+                if nb == 0:
+                    has_lib = True
+                elif nb == col and (nx, ny) not in vis:
+                    stack.append((nx, ny))
+        return group, has_lib
+
+    def _remove_group(self, group):
+        for x, y in group:
+            self.state["board"][y][x] = 0
+
+    # ===== 進房 =====
+    def add_player(self, sid, pid, deck):
+        if pid in self.players.values():
+            return emit("error", {"msg": "此 player 已在房"}, room=sid)
+        if len(self.players) >= 2:
+            return emit("error", {"msg": "房間已滿"}, room=sid)
+
         self.players[sid] = pid
         join_room(self.id)
-
-        # 牌組驗證
-        ok, msg = validate_deck(deck)
-        if not ok:
-            emit("error", {"msg": msg}, room=sid)
-            return
-
-        # 牌組合法 → 存入房間並標記 ready
-        self.decks[pid] = deque(deck.copy())
+        self.decks[pid] = deque(deck) if deck else make_deck()
         self.ready.add(pid)
-        print(f"[Room {self.id}] pid={pid} ready ({len(self.ready)}/2)")
 
-        # 等待 / 開始
         if len(self.ready) < 2:
             emit("waiting", f"玩家 {pid} 就緒，等待另一位…", room=self.id)
         else:
             self.start_game()
 
-    def remove_player(self, sid: str):
-        pid = self.players.pop(sid, None)
-        leave_room(self.id)
-        return pid
+    # ===== 遊戲開始 =====
+    def start_game(self):
+        if self.started:
+            return
+        self.started = True
+        self.state["turn"] = int(random.choice(["1", "2"]))
 
-    # ---------------- 行為處理核心 ----------------
-    def handle_action(self, pid: str, action: dict):
+        for pid in ("1", "2"):
+            random.shuffle(self.decks[pid])
+            for _ in range(5):
+                self.state["hands"][pid].append(self.decks[pid].popleft())
+
+        _push_state(self)
+        for sid, pid in self.players.items():
+            view = copy.deepcopy(self.state)
+            opp = "2" if pid == "1" else "1"
+            view["hands"][opp] = len(view["hands"][opp])
+            emit("start", view, room=sid)
+
+    # ===== 行為入口 =====
+    def handle_action(self, pid, action):
         if not self.started:
             return emit("error", {"msg": "對戰尚未開始"}, room=self.id)
-
         if pid != str(self.state["turn"]):
             return emit("error", {"msg": "尚未輪到你"}, room=self.id)
 
         atype = action.get("type")
-        if atype == "draw":
-            self.draw_card(pid)
-        elif atype == "playCard":
+        if atype == "playCard":
             self.play_card(pid, action.get("cardId"), action.get("params", {}))
         elif atype == "endTurn":
             self.end_turn()
@@ -128,149 +167,142 @@ class Room:
             emit("error", {"msg": f"未知指令 {atype}"}, room=self.id)
             return
 
-        # 動作後同步（每人版本不同）
-        _send_state_per_player(self)
+        _push_state(self)
 
-    # ---------------- 具體行為 --------------------
-    def draw_card(self, pid: str):
-        if len(self.state["hands"][pid]) >= MAX_HAND:
-            return emit("error", {"msg": "手牌已滿"}, room=self.id)
-        if not self.decks[pid]:
-            return emit("error", {"msg": "牌堆沒牌了"}, room=self.id)
-        self.state["hands"][pid].append(self.decks[pid].popleft())
-
-    def play_card(self, pid: str, card_id: int, params: dict):
-        """示範只實作『棋子卡』(id==1)，其他卡片留 TODO"""
+    # ===== 出牌邏輯 =====
+    def play_card(self, pid, card_id, params):
         hand = self.state["hands"][pid]
         if card_id not in hand:
             return emit("error", {"msg": "手牌沒有這張牌"}, room=self.id)
 
-        # ---- 消耗能量 (棋子卡固定 2) ----
-        if self.state["energy"][pid] < 2:
+        shape = SHAPES.get(card_id)
+        if not shape:
+            return emit("error", {"msg": f"未定義 card_id={card_id}"}, room=self.id)
+
+        cost = shape["cost"]
+        if self.state["energy"][pid] < cost:
             return emit("error", {"msg": "能量不足"}, room=self.id)
-        self.state["energy"][pid] -= 2
 
-        # ---- 棋子卡：落子 ----
-        if card_id == 1:
-            x, y = params.get("x"), params.get("y")
-            if x is None or y is None or not (0 <= x < BOARD_SIZE and 0 <= y < BOARD_SIZE):
-                return emit("error", {"msg": "無效座標"}, room=self.id)
-            if self.state["board"][y][x] != 0:
-                return emit("error", {"msg": "該位置已有棋子"}, room=self.id)
-            self.state["board"][y][x] = int(pid)
+        # ---------- 投石器：隨機五顆 ----------
+        if card_id == 12:
+            empty = [(x, y) for y in range(BOARD_SIZE)
+                              for x in range(BOARD_SIZE)
+                              if self.state["board"][y][x] == 0]
+            if len(empty) < 5:
+                return emit("error", {"msg": "棋盤空位不足"}, room=self.id)
 
-        # ---- TODO: 其他卡牌效果 ----
+            coords = random.sample(empty, 5)
+
+        # ---------- 其他棋形卡 ----------
+        else:
+            x0, y0 = params.get("x"), params.get("y")
+            dirn   = params.get("dir", "h")
+            if x0 is None or y0 is None:
+                return emit("error", {"msg": "缺少座標"}, room=self.id)
+            if dirn not in shape["dirs"]:
+                return emit("error", {"msg": "不支援的方向"}, room=self.id)
+
+            vecs   = rotate(shape["vectors"], dirn)
+            coords = [(x0 + dx, y0 + dy) for dx, dy in vecs]
+
+            # 檢查全部格子
+            for x, y in coords:
+                if not self._inside(x, y):
+                    return emit("error", {"msg": "落子超出棋盤"}, room=self.id)
+                if self.state["board"][y][x] != 0:
+                    return emit("error", {"msg": "其中一格已有棋子"}, room=self.id)
+
+        # ---------- 暫放所有新子 ----------
+        player_col   = int(pid)
+        opponent_col = 3 - player_col
+        for x, y in coords:
+            self.state["board"][y][x] = player_col
+
+        # ---------- 提子 ----------
+        captured = []
+        for x, y in coords:
+            for dx, dy in DIRECTIONS:
+                nx, ny = x + dx, y + dy
+                if self._inside(nx, ny) and self.state["board"][ny][nx] == opponent_col:
+                    grp, lib = self._get_group_and_liberties(nx, ny)
+                    if not lib:
+                        captured.extend(grp)
+        if captured:
+            self._remove_group(captured)
+
+        # ---------- 自殺檢查 ----------
+        suicide = True
+        for x, y in coords:
+            _, lib = self._get_group_and_liberties(x, y)
+            if lib:
+                suicide = False
+                break
+        if suicide:
+            for x, y in coords:
+                self.state["board"][y][x] = 0
+            return emit("error", {"msg": "自殺手不允許"}, room=self.id)
+
+        # ---------- 成功：扣能量、移除手牌 ----------
+        self.state["energy"][pid] -= cost
         hand.remove(card_id)
 
-    # ---------------- gacha 抽牌同步 ----------------
-    def receive_gacha(self, pid: str, cards: list[int], sid: str):
-        """
-        cards : list[int] 由前端 gacha.js 傳入
-        只更新自己手牌並回傳 hand:update，不影響對手
-        """
-        free = MAX_HAND - len(self.state["hands"][pid])
-        if free <= 0:
-            return emit("error", {"msg": "手牌已滿"}, room=sid)
-        accepted = cards[:free]
-        self.state["hands"][pid].extend(accepted)
-        emit("hand:update", self.state["hands"][pid], room=sid)
-
-    # ---------------- 對戰開始 / 回合結束 ----------------
-    def start_game(self):
-        if self.started:
-            return
-        self.started = True
-        print(f"=== Room {self.id} START GAME ===")
-
-        for pid in ("1", "2"):
-            random.shuffle(self.decks[pid])
-            for _ in range(5):
-                self.state["hands"][pid].append(self.decks[pid].popleft())
-
-        _send_state_per_player(self)
-
+    # ===== 結束回合 =====
     def end_turn(self):
         s = self.state
-        pid_now = str(s["turn"])
-        turn = s["turnCount"] + 1
-        s["turnCount"] = turn
-        next_pid = "2" if pid_now == "1" else "1"
+        now_pid = str(s["turn"])
+        s["turnCount"] += 1
+        next_pid = "2" if now_pid == "1" else "1"
         s["turn"] = int(next_pid)
 
-        cap = ENERGY_GROW.get(turn, s["energyCap"][next_pid])
-        s["energyCap"][next_pid] = min(cap, 6)
+        cap = ENERGY_GROW.get(s["turnCount"], s["energyCap"][next_pid])
+        s["energyCap"][next_pid] = min(cap, MAX_ENERGY)
         s["energy"][next_pid] = s["energyCap"][next_pid]
 
+        if len(s["hands"][next_pid]) < MAX_HAND and self.decks[next_pid]:
+            s["hands"][next_pid].append(self.decks[next_pid].popleft())
 
-# ==================== 房間集合（in-memory） ====================
-rooms: dict[str, Room] = defaultdict(lambda: Room("temp"))  # type: ignore
+    # ===== 斷線 =====
+    def remove_player(self, sid):
+        self.players.pop(sid, None)
+        leave_room(self.id)
 
+# ---------- 房間集合 ----------
+rooms = defaultdict(lambda: Room("temp"))
 
-def get_room(room_id: str) -> Room:
-    if room_id not in rooms or rooms[room_id].id == "temp":
-        rooms[room_id] = Room(room_id)
-    return rooms[room_id]
+def get_room(rid):
+    if rid not in rooms or rooms[rid].id == "temp":
+        rooms[rid] = Room(rid)
+    return rooms[rid]
 
-
-# ==================== Socket.IO 事件 ===========================
+# ---------- Socket.IO 事件 ----------
 @socketio.on("join")
 def on_join(data):
-    room_id = data.get("room", "demo")
-    pid     = data.get("player", "1")
-    deck    = data.get("deck", [])
-    room = get_room(room_id)
-    room.add_player(request.sid, pid, deck)
-@socketio.on("disconnect")
-def on_leave():
-    for room, info in list(rooms.items()):
-        for pid, pdata in list(info["players"].items()):
-            if pdata["sid"] == request.sid:
-                del info["players"][pid]
-                if not info["players"]:
-                    del rooms[room]               # 清空空房
-                else:
-                    socketio.emit("waiting", "對手斷線，等待重新連線…", room=room)
-                leave_room(room)
-                return
-
+    rid  = data.get("room", "demo")
+    pid  = data.get("player", "1")
+    deck = data.get("deck", [])
+    get_room(rid).add_player(request.sid, pid, deck)
 
 @socketio.on("action")
 def on_action(data):
-    room_id = data.get("room")
+    rid    = data.get("room")
     action = data.get("action", {})
-    room = get_room(room_id)
-    pid = room.players.get(request.sid)
+    room   = get_room(rid)
+    pid    = room.players.get(request.sid)
     if not pid:
         return emit("error", {"msg": "尚未加入房間"})
     room.handle_action(pid, action)
 
-
-# -------- 新增：gacha -> 手牌，同步 deckbuilder ----------
-@socketio.on("gacha:draw")
-def on_gacha_draw(data):
-    """
-    data = {
-        room : str,
-        cards: [int, ...]
-    }
-    """
-    room_id = data.get("room")
-    cards = data.get("cards", [])
-    room = get_room(room_id)
-    pid = room.players.get(request.sid)
-    if not pid:
-        return emit("error", {"msg": "尚未加入房間"})
-    room.receive_gacha(pid, cards, request.sid)
-
-
 @socketio.on("disconnect")
 def on_disconnect():
-    for r in rooms.values():
-        if request.sid in r.players:
-            r.remove_player(request.sid)
+    for rid, room in list(rooms.items()):
+        if request.sid in room.players:
+            room.remove_player(request.sid)
+            if not room.players:
+                del rooms[rid]
+            else:
+                emit("waiting", "對手斷線，等待重新連線…", room=rid)
             break
 
-
-# ====================== Main entry =============================
+# ---------- 入口 ----------
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=5000, debug=True)

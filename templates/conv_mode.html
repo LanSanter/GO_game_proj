@@ -15,7 +15,7 @@
     <div class="main-panel">
         <h2>歡迎，{{ session.username }}</h2>
         <div id="game-button">
-            <button onclick="resetBoard()">重設棋盤</button>
+            <button id="reset-btn" >重設棋盤</button>
            <!-- <button onclick="convolutionByRowUpdate()">卷積更新棋盤</button> -->
         </div>
         <div style="margin-top: 10px;">
@@ -30,5 +30,5 @@
 {% endblock %}
 {% block scripts %}
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-<script type="module" src="{{ url_for('static', filename='js/conv_mode.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/conv_mode2.js') }}"></script>
 {% endblock %}

@@ -8,7 +8,12 @@ class Game:
 
     def place_stone(self, x, y, color):
         if not self.is_valid_move(x, y, color):
-            return {"x": x, "y": y, "color": color, "success": False, "message": "妳不能下在邊界外或是已有棋子的位子"}
+            if self.board[y][x]:
+                return {"x": x, "y": y, "color": color, "success": False, "message": "妳不能下在已有棋子的位子"}
+            elif color != self.turn:
+                return {"x": x, "y": y, "color": color, "success": False, "message": "妳不能在對方回合落子"}
+            else:
+                return {"x": x, "y": y, "color": color, "success": False, "message": "妳不能下在邊界外"}
 
         self.board[y][x] = color
         opponent = "white" if color == "black" else "black"
@@ -88,15 +93,47 @@ class Game:
         self.__init__()
         return {"success": True, "message": "Board reset.", "moves": moves}
     
-    def apply_convolution(self, filter_name="default"):
+    def apply_convolution(self, filter_name="default", turn="black"):
         moves = self.moves.copy()
         self.__init__()
         self.moves = moves
+        self.turn = turn
         self.filter_used = filter_name
 
         self.moves.append({"x": None, "y": None, "color": None, "filter": filter_name})
 
         return {"success": True, "message": f"應用了 filter: {filter_name}"}
+    #卷積特用落子函數，跳過合理性檢查
+    def conv_place_stone(self, x, y, color):
+        self.board[y][x] = color
+        opponent = "white" if color == "black" else "black"
+        to_capture = []
+
+        # 檢查落子是否造成提子
+        for dx, dy in [(-1,0), (1,0), (0,-1), (0,1)]:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < 19 and 0 <= ny < 19 and self.board[ny][nx] == opponent:
+                group, has_liberty = self.get_group_and_liberties(nx, ny)
+                if not has_liberty:
+                    to_capture.extend(group)
+
+        if to_capture:
+            self.remove_group(to_capture)
+
+        # 檢查自己是否變成無氣（自殺）
+        group, has_liberty = self.get_group_and_liberties(x, y)
+        if not has_liberty:
+            self.board[y][x] = None
+            return {"x": x, "y": y, "color": color, "success": False, "message": "Suicide move."}
+        
+        # 落子正常，紀錄
+        self.moves.append({"x": x, "y": y, "color": color}) 
+        self.turn = opponent
+        return {
+            "x": x, "y": y, "color": color,
+            "success": True,
+            "captures": to_capture  # 傳給前端清除
+        }
 
 class GameManager:
     def __init__(self):
@@ -119,8 +156,14 @@ class GameManager:
             return game.reset_board()
         return {"success": False, "message": "Game not found."}
     
-    def apply_convolution(self,game_id, filter_name="default"):
+    def apply_convolution(self,game_id, filter_name="default", turn="black"):
         game = self.games.get(game_id)
         if game:
-            return game.apply_convolution(filter_name)
+            return game.apply_convolution(filter_name, turn)
+        return {"success": False, "message": "Game not found."}
+    
+    def conv_place_stone(self, game_id, x, y, color):
+        game = self.games.get(game_id)
+        if game:
+            return game.conv_place_stone(x, y, color)
         return {"success": False, "message": "Game not found."}
