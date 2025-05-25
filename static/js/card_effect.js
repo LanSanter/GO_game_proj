@@ -116,7 +116,6 @@ export const CARD_EFFECTS = (() => {
       if(!anchor) return{ok:false};
       const abs=pts.map(([dx,dy])=>[anchor.x+dx,anchor.y+dy]);
       if(abs.some(([x,y])=>!inside(b,x,y)||b[y][x])) return{ok:false};
-      const nb=copy(b); abs.forEach(([x,y])=>nb[y][x]=c;
       return{ok:true,board:nb};
     }
   });
