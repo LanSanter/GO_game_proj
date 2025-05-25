@@ -1,4 +1,5 @@
 {% extends "card_base.html" %}
+
 {% block head_extra %}
 <style>
   /* ========= 共用卡牌縮圖 ========= */
@@ -23,30 +24,45 @@
     width:240px;aspect-ratio:2/3;
     background-size:cover;background-position:center;
     border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.45);
-    display:none;                       /* 預設隱藏 */
+    display:none;
   }
-  @media(max-width:768px){              /* 行動版縮小 */
+  @media(max-width:768px){
     #preview-card{width:160px;right:12px;bottom:12px;}
   }
+
+  /* ========= 牌組槽位按鈕 ========= */
+  .slot-btn{padding:.25rem .75rem;border-radius:.5rem;border:1px solid #999;}
+  .slot-btn.active{background:#2563eb;color:#fff;border-color:#2563eb;}
 </style>
 {% endblock %}
 
 {% block content %}
 <h1 class="text-center mb-4">構建牌組</h1>
 
+<!-- ★ 牌組槽位切換區 -->
+<div class="flex items-center gap-3 mb-6" id="slot-selector">
+  <span class="text-sm text-gray-400">當前牌組：</span>
+  <button class="slot-btn" data-slot="1">牌組&nbsp;1</button>
+  <button class="slot-btn" data-slot="2">牌組&nbsp;2</button>
+  <button class="slot-btn" data-slot="3">牌組&nbsp;3</button>
+  <span id="slot-tag" class="text-xs text-gray-500"></span>
+</div>
+
 <h2>我的卡牌收藏</h2>
 <div id="collection" class="card-grid"></div>
 
-<h2 class="mt-8">已選牌組 (<span id="deck-count">0</span>/110)</h2>
+<h2 class="mt-8">
+  已選牌組 (<span id="deck-count">0</span>/110)
+</h2>
 <div id="deck" class="card-grid"></div>
 
 <p class="mt-4 text-sm text-gray-300" id="energy-total">總能量：0</p>
 
-<div class="mt-6 flex gap-4">
-  <button id="save-deck" class="btn">儲存牌組</button>
+<div class="mt-6 flex flex-wrap gap-4">
+  <button id="save-deck"  class="btn">儲存牌組</button>
   <button id="clear-deck" class="btn">清空牌組</button>
-  <button class="btn large ml-4" id="btn-load-aggro">速攻牌組</button>
-  <button class="btn large ml-4" id="btn-load-finisher">後期制霸牌組</button>
+  <button id="btn-load-aggro"    class="btn large ml-4">速攻牌組</button>
+  <button id="btn-load-finisher" class="btn large">終盤制霸</button>
 </div>
 
 <!-- ★ 右下角大圖預覽框 -->
@@ -54,8 +70,6 @@
 {% endblock %}
 
 {% block script_extra %}
+<!-- 請確認路徑與檔名對應你剛才更新的 JS 版本 -->
 <script src="{{ url_for('static', filename='js/card_deckbuilder.js') }}" defer></script>
 {% endblock %}
-
-
-
