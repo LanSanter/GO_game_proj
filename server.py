@@ -9,7 +9,7 @@ import random, copy
 # ---------- 遊戲參數 ----------
 BOARD_SIZE   = 19
 MAX_HAND     = 10
-ENERGY_GROW  = {1: 2, 5: 3, 7: 4, 9: 5, 11: 6}
+ENERGY_GROW  = {1: 2, 5: 3, 7: 4, 9: 5, 11: 6}   # 全域回合數 ➜ 新上限
 MAX_ENERGY   = 6
 DIRECTIONS   = [(-1, 0), (1, 0), (0, -1), (0, 1)]      # 上下左右
 
@@ -250,14 +250,25 @@ class Room:
     def end_turn(self):
         s = self.state
         now_pid = str(s["turn"])
+
+        # 進入下一全域回合
         s["turnCount"] += 1
         next_pid = "2" if now_pid == "1" else "1"
         s["turn"] = int(next_pid)
 
-        cap = ENERGY_GROW.get(s["turnCount"], s["energyCap"][next_pid])
-        s["energyCap"][next_pid] = min(cap, MAX_ENERGY)
+        # ---------- 能量上限成長 & 當下能量同步 +1 ----------
+        # 若本回合屬於 ENERGY_GROW 門檻，計算新上限
+        new_cap = ENERGY_GROW.get(s["turnCount"])
+        if new_cap and new_cap > s["energyCap"]["1"]:
+            diff = new_cap - s["energyCap"]["1"]          # 理論上 diff 恆為 1
+            for pid_ in ("1", "2"):
+                s["energyCap"][pid_] = new_cap
+                s["energy"][pid_]   = min(s["energy"][pid_] + diff, new_cap)
+
+        # ---------- 下一位行動者回合開始：能量回滿 ----------
         s["energy"][next_pid] = s["energyCap"][next_pid]
 
+        # ---------- 抽牌 ----------
         if len(s["hands"][next_pid]) < MAX_HAND and self.decks[next_pid]:
             s["hands"][next_pid].append(self.decks[next_pid].popleft())
 
