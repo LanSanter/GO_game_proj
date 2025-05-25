@@ -1,16 +1,57 @@
+{# ================= card_gacha.html  — v3 ================= #}
 {% extends "card_base.html" %}
 
 {% block head_extra %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/card_gacha.css') }}">
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='css/card_gacha.css') }}">
+
 <style>
+  /* ========= 卡片 / Badge / Grid ========= */
   .card     {position:relative;width:100px;aspect-ratio:2/3;
              background-size:cover;background-position:center;
-             border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.2);}
+             border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.2);
+             transition:transform .18s ease,box-shadow .18s ease;z-index:0;}
+  .card:hover{transform:translateY(-12px) scale(1.08);
+              box-shadow:0 12px 24px rgba(0,0,0,.35);z-index:10;}
   .badge    {position:absolute;top:2px;right:4px;padding:0 4px;
              font-size:.75rem;font-weight:700;color:#fff;
              background:#c81e1e;border-radius:9999px;}
   .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
              gap:.5rem;margin-top:1rem;}
+
+  /* — 未擁有卡片灰階 — */
+  .card.locked{filter:grayscale(100%) brightness(.6);opacity:.5;pointer-events:none;}
+
+  /* ========= 右下小預覽 ========= */
+  #preview-card{
+    position:fixed;right:20px;bottom:20px;
+    width:180px;aspect-ratio:2/3;
+    background-size:cover;background-position:center;
+    border-radius:10px;border:4px solid #fff;
+    box-shadow:0 4px 16px rgba(0,0,0,.5);
+    display:none;z-index:900;
+  }
+
+  /* ========= 全螢幕大預覽 ========= */
+  #overlay-mask{
+    position:fixed;inset:0;
+    background:rgba(0,0,0,.6);
+    display:flex;align-items:center;justify-content:center;
+    z-index:2000;opacity:0;pointer-events:none;
+    transition:opacity .25s;
+  }
+  #overlay-mask.show{opacity:1;pointer-events:auto;}
+
+  #overlay-card{
+    width:280px;aspect-ratio:2/3;
+    background-size:cover;background-position:center;
+    border-radius:12px;
+    box-shadow:0 8px 28px rgba(0,0,0,.55);
+    cursor:pointer;
+    transition:transform .25s;
+  }
+  /* 放大 1.5× */
+  #overlay-mask.show #overlay-card{transform:scale(1.5);}
 </style>
 {% endblock %}
 
@@ -28,9 +69,15 @@
   <h4 class="mt-8">我的卡牌庫</h4>
   <ul id="collection-zone" class="card-grid"></ul>
 </section>
+
+<!-- 右下小預覽 -->
+<div id="preview-card"></div>
+
+<!-- 全螢幕大預覽 -->
+<div id="overlay-mask"><div id="overlay-card"></div></div>
 {% endblock %}
 
 {% block script_extra %}
-<script type="module" src="{{ url_for('static', filename='js/card_gacha.js') }}"></script>
+<script type="module"
+        src="{{ url_for('static', filename='js/card_gacha.js') }}"></script>
 {% endblock %}
-
