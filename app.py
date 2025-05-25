@@ -29,21 +29,31 @@ def index():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-        if user_manager.verify_user(username, password):
+        data = request.get_json()
+        username = data.get("username")
+        password = data.get("password")
+
+        user = User.query.filter_by(username=username).first()
+        if user and user_manager.verify_user(username, password):
             session['username'] = username
-            return redirect(url_for("lobby"))
-        return "Login failed", 401
+            return jsonify({"success": True}), 200
+
+        return jsonify({"success": False, "error": "登入失敗，帳號或密碼錯誤"}), 401
+    
     return render_template("login.html")
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
         data = request.get_json()
-        if user_manager.register_user(data['username'], data['password']):
-            return jsonify({"success": True})
-        return jsonify({"success": False, "error": "帳號已存在"})
+        username = data.get("username")
+        password = data.get("password")
+
+        if user_manager.register_user(username, password):
+            return jsonify({"success": True}), 201
+        else:
+            return jsonify({"success": False, "error": "帳號已存在"}), 400
+    
     return render_template("register.html")
 
 @app.route("/logout")
