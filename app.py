@@ -134,7 +134,7 @@ def handle_reset_board(data):
 
 @app.route("/api/random_filters")
 def random_filters():
-    selected = random.sample(FILTER_POOL, 3)
+    selected = random.sample(FILTER_POOL, 6)
     return jsonify(selected)
 
 @socketio.on("apply_convolution")
