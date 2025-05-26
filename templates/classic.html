@@ -11,11 +11,13 @@
             <button class="btn" id="reset-btn">重設棋盤</button>
             <button class="btn" id="review-btn" >結算棋局</button>
             <button class="btn" id="territory-btn" >顯示領地</button>
+            <button class="btn" id="finalize-btn" style="display: none;">確認結算</button>
            <!-- <button onclick="convolutionByRowUpdate()">卷積更新棋盤</button> -->
         </div>
         <div style="margin-top: 10px;">
             <p><strong>目前輪到：</strong> <span id="turn-indicator">⚫黑棋</span></p>
             <p id="error-msg" style="color: red; height: 1.5em;"></p>
+            <div id="territory-result" style="margin-top: 12px; font-weight: bold;"></div>
         </div>
         <div id="game-board">
             <canvas id="board" width="570" height="570" style="border:1px solid black"></canvas>

@@ -3,7 +3,7 @@ import { registerBoardClickHandler } from './board_interaction.js';
 import { gameIdRef,lastMove, boardState, boardSize, cellSize, currentColorRef } from './board_state.js';
 import { emitResetBoard, initSocketEvents } from './board_socket.js';
 import { createCardSelector, loadFilterCardsFromAPI, registerApplyHandler } from './filter_ui.js';
-import { DeathReviewState, drawTerritoryOnTop} from './review.js';
+import { DeathReviewState,applyFinalRemoval, drawTerritoryOnTop} from './review.js';
 import { registerDeathReviewClickHandler } from './board_interaction.js';
 import { runBenson } from './benson.js';
 
@@ -85,10 +85,25 @@ window.addEventListener("DOMContentLoaded", () => {
                 deathReview.drawOnTop(ctx, cellSize, boardState, boardSize, lastMove);
             }
         });
+
+        // 顯示結算按鈕
+        document.getElementById("finalize-btn").style.display = "inline-block";
+
+        // 結算邏輯
+        document.getElementById("finalize-btn").onclick = () => {
+            const confirmed = deathReview.getState();
+            applyFinalRemoval(boardState, confirmed);
+
+            // 領地分析
+            const msg = drawTerritoryOnTop(ctx, cellSize, boardState, boardSize, lastMove);
+            document.getElementById("territory-result").textContent = msg;
+
+        };
     };
     //註冊領地分布按鈕
     document.getElementById("territory-btn").onclick = () => {
-        drawTerritoryOnTop(ctx, cellSize, boardState, boardSize, lastMove);
+        const msg = drawTerritoryOnTop(ctx, cellSize, boardState, boardSize, lastMove);
+        document.getElementById("territory-result").textContent = msg;
     }
 
 
