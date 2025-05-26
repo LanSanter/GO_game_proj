@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}帳號管理 - Go Game{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<h2>帳號管理</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>帳號</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for user in users %}
+        <tr>
+            <td class="user_id">{{ user.id }}</td>
+            <td>
+                <input type="text" class="" id="username-{{ user.id }}" value="{{ user.username }}">
+            </td>
+            <td>
+                <input type="password" class="" id="password-{{ user.id }}" placeholder="新密碼（可選）">
+                <button class="btn-save" onclick="updateUser('{{ user.id }}')">儲存</button>
+                <button class="btn-delete" onclick="deleteUser('{{ user.id }}')">刪除</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+
+<div class="create_user">
+    <h4 class="">新增使用者</h4>
+    <form id="createUserForm" class="">
+        <div class="">
+            <input class="" type="text" name="username" placeholder="帳號" required>
+        </div>
+        <div class="">
+            <input class="" type="password" name="password" placeholder="密碼" required>
+        </div>
+        <div class="">
+            <button type="submit" class="btn-create">新增</button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById("createUserForm").onsubmit = async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const response = await fetch("/api/admin/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                username: form.username.value,
+                password: form.password.value
+            })
+        });
+
+        if (response.ok) {
+            alert("新增成功");
+            location.reload();
+        } else {
+            try {
+                const error = await response.json();
+                alert("新增失敗：" + error.error);
+            } catch (e) {
+                const text = await response.text();
+                alert("伺服器錯誤：" + text.slice(0, 200)); // 限制長度
+            }
+        }
+    }
+
+    async function deleteUser(userId) {
+        if (!confirm("確定要刪除該帳號？")) return;
+        await fetch(`/api/admin/users/${userId}`, {
+            method: "DELETE"
+        });
+        location.reload();
+    }
+
+    async function updateUser(userId) {
+        const username = document.getElementById(`username-${userId}`).value;
+        const password = document.getElementById(`password-${userId}`).value;
+        const body = { username };
+        if (password) body.password = password;
+
+        const res = await fetch(`/api/admin/users/${userId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
+
+        if (res.ok) {
+            alert("更新成功");
+            location.reload();
+        } else {
+            const error = await res.json();
+            alert("更新失敗：" + error.error);
+        }
+    }
+</script>
+{% endblock %}

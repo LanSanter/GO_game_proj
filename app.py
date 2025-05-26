@@ -61,6 +61,76 @@ def logout():
     session.pop('username', None)
     return redirect(url_for('login'))
 
+# 帳號管理
+@app.route("/admin")
+def administrator():
+    if session.get('username') != 'admin':
+        return redirect(url_for('index'))
+    users = User.query.all()
+    return render_template("admin.html", users=users)
+
+@app.route("/api/admin/users", methods=["POST"])
+def admin_create_user():
+    try:
+        if session.get('username') != 'admin':
+            return jsonify({"error": "Unauthorized"}), 403
+
+        data = request.get_json()
+        if not data or not data.get('username') or not data.get('password'):
+            return jsonify({"error": "缺少帳號或密碼"}), 400
+
+        if User.query.filter_by(username=data['username']).first():
+            return jsonify({"error": "帳號已存在"}), 400
+
+        user = User(
+            username=data['username'],
+            password_hash=user_manager.hash_password(data['password'])
+        )
+        db.session.add(user)
+        db.session.commit()
+        return jsonify({"success": True}), 201
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": "Internal Server Error"}), 500
+
+
+@app.route("/api/admin/users/<int:user_id>", methods=["DELETE"])
+def admin_delete_user(user_id):
+    if session.get('username') != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"success": True}), 200
+
+@app.route("/api/admin/users/<int:user_id>", methods=["PUT"])
+def admin_update_user(user_id):
+    if session.get('username') != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    data = request.get_json()
+    new_username = data.get("username")
+    new_password = data.get("password")
+
+    if new_username:
+        # 若更改名稱但新名稱已被使用
+        if new_username != user.username and User.query.filter_by(username=new_username).first():
+            return jsonify({"error": "帳號已存在"}), 400
+        user.username = new_username
+
+    if new_password:
+        user.password_hash = user_manager.hash_password(new_password)
+
+    db.session.commit()
+    return jsonify({"success": True})
+
 @app.route("/lobby")
 def lobby():
     return render_template("lobby.html")
@@ -134,7 +204,7 @@ def handle_reset_board(data):
 
 @app.route("/api/random_filters")
 def random_filters():
-    selected = random.sample(FILTER_POOL, 6)
+    selected = random.sample(FILTER_POOL, 3)
     return jsonify(selected)
 
 @socketio.on("apply_convolution")

@@ -42,10 +42,10 @@ function initSocketEvents(socket, ctx, cellSize,gameIdRef,lastMove,
     
 }
 
-function emitResetBoard(socket, gameIdRef, ctx, boardSize, cellSize) {
+function emitResetBoard(socket, gameIdRef, ctx, boardState, boardSize, cellSize) {
     resetGameState(boardState, boardSize);
     socket.emit("reset_board", { game_id: gameIdRef.value });
-    drawBoard(ctx, boardSize, cellSize);
+    drawBoard(ctx, cellSize, boardSize);
 }
 
 export {initSocketEvents, emitResetBoard};

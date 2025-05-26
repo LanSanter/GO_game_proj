@@ -17,6 +17,9 @@
             <a class="nav-btn" href="{{ url_for('index') }}">返回遊戲大廳</a>
             <a class="nav-btn" href="{{ url_for('records') }}">對局紀錄</a>
             <a class="nav-btn" href="{{ url_for('logout') }}">登出</a>
+            {% if session['username'] == 'admin' %}
+                <a class="nav-btn" href="{{ url_for('administrator') }}">帳號管理</a>
+            {% endif %}
         </nav>
         {% endif %}
         <hr>

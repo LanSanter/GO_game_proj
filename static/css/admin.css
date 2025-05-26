@@ -1,0 +1,71 @@
+table {
+    border-collapse: collapse;
+    width: 50%;
+    margin-top: 20px;
+    font-size: 16px;
+}
+
+th, td {
+    border: 1px solid #ccc;
+    padding: 12px 10px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.user_id{
+    text-align: center;
+}
+
+th {
+    background-color: #f4f4f4;
+    font-weight: bold;
+}
+
+input {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 6px 10px;
+    width: 60%;
+    font-size: 14px;
+}
+
+button {
+    border-radius: 6px;
+    color: white;
+    padding: 6px 10px;
+    font-size: 14px;
+    margin: 2px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+button:hover {
+    transform: scale(1.05);
+}
+
+.btn-save {
+    background-color: green;
+}
+
+.btn-delete {
+    background-color: red;
+}
+
+.btn-create {
+    background-color: DodgerBlue;
+}
+
+.create_user {
+    margin-top: 40px;
+    margin-bottom: 40px;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    width: 20%;
+}
+
+.create_user input {
+    width: 80%;
+    margin-bottom: 10px;
+}
