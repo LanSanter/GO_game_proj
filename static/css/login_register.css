@@ -2,13 +2,13 @@ form {
     margin-top: 30px;
     border-radius: 10px;
     width: 400px;
-    height: 400px;
     background-color: #333;
     gap: 5px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    padding: 20px;
 }
 
 input {
@@ -21,26 +21,55 @@ input {
     border: none;
 }
 
+.password-container {
+    position: relative;
+    width: 70%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between; 
+}
+
+.password-container input {
+    width: 100%;
+    padding-right: 35px;
+    height: 40px;
+    line-height: 15px;
+    border-radius: 20px;
+    padding: 0px 20px;
+    background: rgba(255, 255, 255, 0.3);
+    border: none;
+}
+
+.password-container .toggle-password {
+    position: absolute;
+    right: 10px;
+    cursor: pointer;
+    color: #fff;
+}
+
+.password-container .toggle-password i {
+    font-size: 20px;
+}
+
 h2 {
-    margin-bottom: 90px;
+    margin-bottom: 20px;
     font-size: 35px;
     color: white;
 }
 
-::placeholder{
+::placeholder {
     font-size: 20px;
     color: lightgray;
 }
 
 button {
-    
     display: inline-block;
     outline: none;
     cursor: pointer;
     font-size: 14px;
     line-height: 1;
     border-radius: 10px;
-    transition-property: background-color,border-color,color,box-shadow,filter;
+    transition-property: background-color, border-color, color, box-shadow, filter;
     transition-duration: .3s;
     border: 1px solid transparent;
     letter-spacing: 2px;
@@ -54,9 +83,17 @@ button {
     box-shadow: inset 0 0 0 2px white;
     background-color: transparent;
     height: 48px;
+    margin-top: 30px;
 }
 
 button:hover {
     color: black;
     background-color: white;
+}
+
+#login-msg, #register-msg {
+    margin-top: 10px;
+    font-size: 14px;
+    color: white;
+    text-align: center;
 }

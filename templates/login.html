@@ -3,12 +3,48 @@
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/login_register.css') }}">
 
-<form method="POST">
+<form method="POST" id="login-form">
     <h2>登入</h2>
-    <input type="text" name="username" placeholder="Username"><br>
-    <input type="password" name="password" placeholder="Password"><br>
+    <input type="text" name="username" placeholder="Username" required><br>
+    <div class="password-container">
+        <input type="password" name="password" id="login-password" placeholder="Password" required>
+        <span class="toggle-password" id="toggle-login-password">
+            <i class="fa fa-eye"></i> 
+        </span>
+    </div>
     <button type="submit">登入</button>
 </form>
-<p></p>
+
+<p id="login-msg" style="color: red;"></p>
 <p>尚未註冊？<a href="{{ url_for('register') }}">前往註冊</a></p>
+
+<script>
+document.getElementById("login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const username = document.querySelector('input[name="username"]').value;
+    const password = document.querySelector('input[name="password"]').value;
+
+    const res = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    const msg = document.getElementById("login-msg");
+
+    if (data.success) {
+        window.location.href = "{{ url_for('lobby') }}"; 
+    } else {
+        msg.textContent = data.error || "登入失敗，請再試一次";
+    }
+});
+
+// 切換顯示/隱藏密碼
+document.getElementById("toggle-login-password").addEventListener("click", function() {
+    const passwordField = document.getElementById("login-password");
+    const type = passwordField.type === "password" ? "text" : "password";
+    passwordField.type = type;
+    this.querySelector("i").classList.toggle("fa-eye-slash");
+});
+</script>
 {% endblock %}

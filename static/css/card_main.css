@@ -1,141 +1,117 @@
-/* 色票定義 */
-:root {
-  --primary-bg:     #0d1117;
-  --secondary-bg:   #161b22;
-  --accent:         #58a6ff;
-  --text-main:      #c9d1d9;
-  --text-light:     #8b949e;
-  --border:         #30363d;
-  --border-hover:   #58a6ff;
+/* ========== 色票定義 ========== */
+:root{
+  --primary-bg:#0d1117;
+  --secondary-bg:#161b22;
+  --accent:#58a6ff;
+  --text-main:#c9d1d9;
+  --text-light:#8b949e;
+  --border:#30363d;
+  --border-hover:#58a6ff;
 }
-/* 遮罩 */
-#overlay-mask{
-  position:fixed; inset:0;
-  background:rgba(0,0,0,.6);
-  display:flex; align-items:center; justify-content:center;
-  z-index:2000; opacity:0; pointer-events:none;
+
+/* ========== 頁面背景 & Reset ========== */
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  background:url("../img/bg.png");
+  background-size:cover;
+  color:var(--text-main);
+  font-family:'Segoe UI',Roboto,sans-serif;
+  line-height:1.5;
+}
+
+/* ========== Navbar ========== */
+.navbar{
+  padding:.6rem 1.2rem;
+  display:flex;align-items:center;
+  border-bottom:1px solid var(--border);
+  background:rgba(0,0,0,.5);
+}
+.navbar .brand{font-size:1.5rem;font-weight:600;flex:1;}
+.navbar nav a{
+  margin-left:1rem;padding:.4rem .8rem;
+  border-radius:4px;color:var(--text-main);
+  transition:background .2s;
+}
+.navbar nav a:hover{background:rgba(88,166,255,.1);}
+
+/* ========== Main 區域半透 ========== */
+main{padding:1.5rem;background:rgba(0,0,0,.5);}
+
+/* ========== 共用按鈕 ========== */
+button,.btn{
+  background:var(--accent);color:#fff;border:none;
+  padding:.6rem 1rem;border-radius:4px;cursor:pointer;
   transition:opacity .2s;
 }
-#overlay-mask.show{opacity:1; pointer-events:auto;}
+button:hover,.btn:hover{opacity:.85;}
 
-/* 中央大卡圖 */
+/* ========== 卡牌基礎樣式 ========== */
+.card_base{
+  width:80px;height:110px;border-radius:6px;
+  background:linear-gradient(135deg,var(--secondary-bg),var(--accent));
+  border:1px solid var(--border);
+  box-shadow:0 2px 8px rgba(0,0,0,.4);
+  cursor:pointer;
+  transition:transform .2s,box-shadow .2s,border-color .2s;
+}
+.card_base:hover,.card_base:focus{
+  transform:translateY(-4px);
+  box-shadow:0 4px 16px rgba(88,166,255,.4);
+  border-color:var(--border-hover);
+}
+.card_base.selected{
+  transform:scale(1.1);
+  box-shadow:0 6px 24px rgba(88,166,255,.6);
+  border-color:var(--border-hover);
+}
+
+/* ========== Gacha 頁專用 ========== */
+.card     {position:relative;width:100px;aspect-ratio:2/3;
+           background-size:cover;background-position:center;
+           border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.2);
+           transition:transform .18s ease,box-shadow .18s ease;z-index:0;}
+.card:hover{transform:translateY(-12px) scale(1.08);
+            box-shadow:0 12px 24px rgba(0,0,0,.35);z-index:10;}
+.badge    {position:absolute;top:2px;right:4px;padding:0 4px;
+           font-size:.75rem;font-weight:700;color:#fff;
+           background:#c81e1e;border-radius:9999px;}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
+           gap:.5rem;margin-top:1rem;}
+
+/* —— 未擁有卡片灰階 —— */
+.card.locked{
+  filter:grayscale(100%) brightness(.6);
+  opacity:.5;
+  pointer-events:none;     /* 若想仍可點擊預覽就移除此行 */
+}
+
+/* ========== 右下小預覽 ========== */
+#preview-card{
+  position:fixed;right:20px;bottom:20px;
+  width:180px;aspect-ratio:2/3;
+  background-size:cover;background-position:center;
+  border-radius:10px;border:4px solid #fff;
+  box-shadow:0 4px 16px rgba(0,0,0,.5);
+  display:none;z-index:900;
+}
+
+/* ========== 全螢幕大預覽 ========== */
+#overlay-mask{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.6);
+  display:flex;align-items:center;justify-content:center;
+  z-index:2000;opacity:0;pointer-events:none;
+  transition:opacity .25s;
+}
+#overlay-mask.show{opacity:1;pointer-events:auto;}
+
 #overlay-card{
-  width:280px; height:420px;     /* 想多大就調 */
-  background-size:cover; background-position:center;
+  width:280px;height:420px;
+  background-size:cover;background-position:center;
   border-radius:12px;
   box-shadow:0 8px 28px rgba(0,0,0,.55);
   cursor:pointer;
+  transition:transform .25s;
 }
-
-/* Reset */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-/* 背景圖＋文字 */
-body {
-  background: url("../img/bg.png");
-  background-size: cover;
-  color: var(--text-main);
-  font-family: 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.5;
-}
-
-/* 半透明遮罩，提升可讀性 */
-.navbar,
-main {
-  background: rgba(0, 0, 0, 0.5);
-}
-
-/* Navbar */
-.navbar {
-  padding: 0.6rem 1.2rem;
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid var(--border);
-}
-.navbar .brand {
-  font-size: 1.5rem;
-  font-weight: 600;
-  flex: 1;
-}
-.navbar nav a {
-  margin-left: 1rem;
-  padding: 0.4rem 0.8rem;
-  border-radius: 4px;
-  color: var(--text-main);
-  transition: background 0.2s;
-}
-.navbar nav a:hover {
-  background: rgba(88, 166, 255, 0.1);
-}
-
-/* 主內容 */
-main {
-  padding: 1.5rem;
-}
-
-/* 卡片基本樣式 */
-.card_base {
-  width: 80px;
-  height: 110px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, var(--secondary-bg), var(--accent));
-  border: 1px solid var(--border);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
-}
-.card_base:hover,
-.card_base:focus {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 16px rgba(88, 166, 255, 0.4);
-  border-color: var(--border-hover);
-}
-.card_base.selected {
-  transform: scale(1.1);
-  box-shadow: 0 6px 24px rgba(88, 166, 255, 0.6);
-  border-color: var(--border-hover);
-}
-
-/* 按鈕樣式 */
-button, .btn {
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  padding: 0.6rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-button:hover, .btn:hover {
-  opacity: 0.85;
-}
-#hand .card{
-  width:80px;height:120px;
-  object-fit:cover;           /* 圖片塞滿卡片框 */
-  border-radius:8px;
-  transition:transform .15s ease, box-shadow .15s ease;
-  cursor:pointer;
-}
-
-/* 容器置中顯示 */
-#hand{
-  display:flex;
-  justify-content:center;   /* 置中 */
-  gap:8px;                  /* 卡片間距 */
-  padding:24px 0;
-}
-
-/* 卡片尺寸與浮起動畫 */
-.card{
-  width:90px;               /* 依喜好調 */
-  transition:transform .18s ease, box-shadow .18s ease;
-  z-index:0;
-}
-.card:hover{
-  transform:translateY(-12px) scale(1.08);
-  box-shadow:0 12px 24px rgba(0,0,0,.35);
-  z-index:10;
-}
+/* 放大 1.5× */
+#overlay-mask.show #overlay-card{transform:scale(1.5);}

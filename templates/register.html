@@ -2,14 +2,22 @@
 {% block title %}註冊{% endblock %}
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/login_register.css') }}">
+
 <form id="register-form">
     <h2>註冊新帳號</h2>
-    <input type="text" id="reg-username" placeholder="Username"><br>
-    <input type="password" id="reg-password" placeholder="Password"><br>
+    <input type="text" id="reg-username" placeholder="Username" required><br>
+    <div class="password-container">
+        <input type="password" id="reg-password" placeholder="Password" required><br>
+        <span class="toggle-password" id="toggle-register-password">
+            <i class="fa fa-eye"></i>
+        </span>
+    </div>
     <button type="submit">註冊</button>
 </form>
-<p id="register-msg"></p>
+
+<p id="register-msg" style="color: red;"></p>
 <p>已經有帳號了？<a href="{{ url_for('login') }}">回到登入頁</a></p>
+
 <script>
 document.getElementById("register-form").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -23,7 +31,26 @@ document.getElementById("register-form").addEventListener("submit", async (e) =>
     });
     const data = await res.json();
     const msg = document.getElementById("register-msg");
-    msg.textContent = data.success ? "註冊成功！請返回登入" : `註冊失敗：${data.error}`;
+
+    if (data.success) {
+        msg.textContent = "註冊成功！即將返回登入";
+        msg.style.color = "green";
+        
+        setTimeout(() => {
+            window.location.href = "{{ url_for('login') }}";
+        }, 2000);
+    } else {
+        msg.textContent = `註冊失敗：${data.error || "帳號已存在"}`;
+        msg.style.color = "red";
+    }
+});
+
+// 切換顯示/隱藏密碼
+document.getElementById("toggle-register-password").addEventListener("click", function() {
+    const passwordField = document.getElementById("reg-password");
+    const type = passwordField.type === "password" ? "text" : "password";
+    passwordField.type = type;
+    this.querySelector("i").classList.toggle("fa-eye-slash");
 });
 </script>
 {% endblock %}
