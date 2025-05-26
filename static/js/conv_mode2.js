@@ -1,8 +1,11 @@
 import { drawBoard, redrawBoard } from './board_core.js';
-import { registerBoardClickHandler } from './interaction.js';
+import { registerBoardClickHandler } from './board_interaction.js';
 import { gameIdRef,lastMove, boardState, boardSize, cellSize, currentColorRef } from './board_state.js';
 import { emitResetBoard, initSocketEvents } from './board_socket.js';
 import { createCardSelector, loadFilterCardsFromAPI, registerApplyHandler } from './filter_ui.js';
+import { DeathReviewState } from './death_review.js';
+import { registerDeathReviewClickHandler } from './board_interaction.js';
+import { runBenson } from './benson.js';
 
 
 
@@ -69,6 +72,20 @@ window.addEventListener("DOMContentLoaded", () => {
             document.getElementById("error-msg").textContent = msg;
         }
     });
+    //註冊審查模式點擊事件
+    document.getElementById("review-btn").onclick = () => {
+        const autoMarked = runBenson(boardState, boardSize); // 依照目前棋盤狀態重新分析
+        const deathReview = new DeathReviewState(autoMarked); // 建立新的標記物件
+
+        registerDeathReviewClickHandler({
+            canvas,
+            cellSize,
+            deathReview,
+            statedraw: () => {
+                deathReview.drawOnTop(ctx, cellSize, boardState, boardSize, lastMove);
+            }
+        });
+    };
 
 
     //後端要增加socketio event:"filter_used"
