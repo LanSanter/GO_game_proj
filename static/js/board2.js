@@ -29,7 +29,7 @@ window.addEventListener("DOMContentLoaded", () => {
     
     //註冊重設棋盤按鈕
     document.getElementById("reset-btn").onclick = () => {
-        emitResetBoard(socket, gameIdRef, ctx, boardSize, cellSize);
+        emitResetBoard(socket, gameIdRef, ctx, boardState, boardSize, cellSize);
     };
     //註冊畫布點擊事件
     registerBoardClickHandler({

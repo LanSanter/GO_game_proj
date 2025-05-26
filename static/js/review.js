@@ -94,7 +94,7 @@ function drawTerritoryOverlay(ctx, territory, cellSize) {
     }
   }
 }
-// 完整棋盤繪製
+// 完整棋盤領地繪製
 function drawTerritoryOnTop(ctx, cellSize, boardState, boardSize, lastMove) {
         const { territory } = territoryEstimate(boardState, boardSize);
         // Draw board + stones + highlights
