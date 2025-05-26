@@ -1,3 +1,12 @@
+/* ==============================================================
+ * card_battle.js  —— v3.3.0  (Hand Toggle + minor polish)
+ * --------------------------------------------------------------
+ *  ● 新增：
+ *      1. #hand-toggle 按鈕，可收合／展開手牌，不再遮住「結束回合」。
+ *      2. 收合時自動取消選牌並隱藏右下大圖預覽。
+ *  ● 其餘既有功能（旋轉、多牌組、Benson 活死判定…）全數保留。
+ * ============================================================ */
+
 import { CARD_EFFECTS } from "./card_effect.js";
 import { io } from "https://cdn.socket.io/4.7.2/socket.io.esm.min.js";
 
@@ -36,12 +45,23 @@ if (!overlay) {
   overlay.style.display = "none";
   document.body.appendChild(overlay);
 }
+
 const roundSpan   = document.getElementById("round-num");
 const turnSpan    = document.getElementById("turn-indicator");
 const energyNow   = document.getElementById("energy-value");
 const energyMaxEl = document.getElementById("energy-max");
 const handDiv     = document.getElementById("hand-zone");
 const passBtn     = document.getElementById("btn-pass");
+
+/* ★★★ 手牌收合按鈕（中央下方） ★★★ */
+let handToggleBtn = document.getElementById("hand-toggle");
+if (!handToggleBtn){
+  handToggleBtn = Object.assign(document.createElement("button"),{
+    id:"hand-toggle",type:"button",textContent:"▼ 收起手牌",
+    className:"hand-toggle"
+  });
+  document.body.appendChild(handToggleBtn);
+}
 
 /* ========= 動態插入記分板 ========= */
 let scoreBlackEl  = document.getElementById("score-black");
@@ -83,6 +103,9 @@ let pendingParams  = {};
 let highlightMap   = [];
 let previewStones  = [];
 
+/* --- 手牌收合狀態 --- */
+let handCollapsed = false;
+
 /* ========= Socket 事件 ========= */
 socket.on("waiting", m => { overlay.textContent = m; overlay.style.display="flex"; });
 socket.on("start",   s => { overlay.style.display="none"; syncState(s); });
@@ -107,11 +130,14 @@ document.addEventListener("DOMContentLoaded", () => {
   RADIUS    = GRID_SIZE * 0.42;
 
   injectPreviewBox();
+
   canvas.addEventListener("click",       onBoardClick);
   canvas.addEventListener("mousemove",   onBoardHover);
   canvas.addEventListener("mouseleave",  () => { previewStones.length=0; redraw(); });
   canvas.addEventListener("contextmenu", onRightClick);
+
   passBtn?.addEventListener("click", () => sendAction({type:"endTurn"}));
+  handToggleBtn.addEventListener("click", toggleHandZone);
 
   redraw();
   updateScoreBoard();   // 初始化記分
@@ -134,7 +160,7 @@ function syncState(s){
   updateScoreBoard();
 }
 
-// 更新能量顯示
+/* 更新能量顯示 */
 function updateEnergy(){
   if (energyNow)   energyNow.textContent  = energy;
   if (energyMaxEl) energyMaxEl.textContent = energyCap;
@@ -143,7 +169,7 @@ function updateEnergy(){
 /* ========= 行為送出 ========= */
 function sendAction(o){ socket.emit("action",{room:ROOM_ID,action:o}); }
 
-// 將「等待參數」轉換為伺服器可識別格式
+/* 將「等待參數」轉換為伺服器可識別格式 */
 function emitPlay(){
   const p = { ...pendingParams };
   if (p.anchor){
@@ -156,12 +182,12 @@ function emitPlay(){
 }
 
 /* ========= 手牌區 ========= */
-// 重新渲染全部手牌
+/* 重新渲染全部手牌 */
 function redrawHand(){
   handDiv.innerHTML="";
   hand.forEach(id=>handDiv.appendChild(createCardEl(id)));
 }
-// 建立單張卡牌 DOM
+/* 建立單張卡牌 DOM */
 function createCardEl(id){
   const d=CARD_EFFECTS[id]||{cost:0};
   const el=document.createElement("div");
@@ -180,7 +206,7 @@ function createCardEl(id){
   };
   return el;
 }
-// 選取 / 取消選取
+/* 選取 / 取消選取 */
 function selectCard(el,id){
   if(selectedCardEl===el){clearSelection();return;}
   selectedCardEl?.classList.remove("selected");
@@ -192,11 +218,20 @@ function selectCard(el,id){
   };
   highlightAnchors(id);
 }
-// 清除選取
+/* 清除選取 */
 function clearSelection(){
   selectedCardEl?.classList.remove("selected");
   selectedCardEl=null; selectedCardId=null;
   pendingParams={}; highlightMap=[]; previewStones=[]; redraw();
+}
+
+/* ========= 手牌收合 / 展開 ========= */
+function toggleHandZone(){
+  handCollapsed = !handCollapsed;
+  handDiv.classList.toggle("collapsed", handCollapsed);
+  handToggleBtn.textContent = handCollapsed ? "▲ 展開手牌" : "▼ 收起手牌";
+  clearSelection();
+  hidePreview();
 }
 
 /* ========= 右下角卡牌預覽 ========= */
@@ -213,6 +248,7 @@ function injectPreviewBox(){
   document.body.appendChild(b);
 }
 function showPreview(id){
+  if(handCollapsed) return;                 // 收合時不顯示
   const b=document.getElementById("card-preview");
   if(b){b.style.backgroundImage = `url('/static/img/cards/${id}.jpg')`; b.style.opacity=1;}
 }
@@ -229,7 +265,7 @@ function redraw(){
   drawPreview();  // 半透明預覽
   highlightMap.forEach(([r,c])=>drawHighlight(r,c)); // 合法點高亮
 }
-// 畫棋盤
+/* 畫棋盤 */
 function drawBoard(){
   ctx.fillStyle="#deb887";
   ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -249,11 +285,11 @@ function drawBoard(){
     }));
   }
 }
-// 畫棋子
+/* 畫棋子 */
 function drawStones(){ board.forEach((row,r)=>row.forEach((v,c)=>v&&drawStone(r,c,v,false))); }
-// 畫預覽
+/* 畫預覽 */
 function drawPreview(){ previewStones.forEach(([r,c])=>drawStone(r,c,current,true)); }
-// 單顆棋子
+/* 單顆棋子 */
 function drawStone(r,c,color,ghost=false){
   const x=GRID_SIZE*(c+1),y=GRID_SIZE*(r+1);
   const g=ctx.createRadialGradient(x-RADIUS*.4,y-RADIUS*.4,RADIUS*.1,x,y,RADIUS*1.05);
@@ -270,8 +306,7 @@ function drawStone(r,c,color,ghost=false){
   ctx.strokeStyle=ghost?"rgba(0,0,0,.25)":"rgba(0,0,0,.5)";
   ctx.stroke();
 }
-
-// 合法點小圓圈
+/* 合法點小圓圈 */
 function drawHighlight(r,c){
   const x=GRID_SIZE*(c+1),y=GRID_SIZE*(r+1);
   ctx.fillStyle="rgba(241,165,23,0.6)";
@@ -412,7 +447,7 @@ function computeScore(){
     }
   }
 
-  /* Step 3. 判定群組 safe (>=2眼  或  libs>1) */
+  /* Step 3. 判定群組 safe (≥2眼  或  libs>1) */
   groups.forEach(g=>{
     let eyeCnt=0;
     g.libs.forEach(l=>{
@@ -461,8 +496,7 @@ function computeScore(){
 }
 
 /* ========= 工具 ========= */
-// 簡易 Toast，可替換為正式 UI
-function toast(m){console.log(m);}
+function toast(m){console.log(m);}   // 簡易 Toast，可替換正式 UI
 
-/* ========= 導出給其他模組（若有需要） ========= */
+/* ========= 導出 ========= */
 export { board,current,GRID_SIZE };

@@ -8,6 +8,23 @@
   --border:#30363d;
   --border-hover:#58a6ff;
 }
+/* ===== 手牌區收合效果 ===== */
+#hand-zone.collapsed{
+  transform:translate(-50%, 120%);
+  opacity:0;
+  pointer-events:none;
+  transition:transform .25s ease, opacity .25s ease;
+}
+
+/* ===== 手牌收合按鈕 ===== */
+.hand-toggle{
+  position:fixed;left:50%;bottom:8px;transform:translateX(-50%);
+  padding:4px 10px;border-radius:8px;border:none;
+  background:rgba(0,0,0,.45);color:#fff;font-size:.8rem;
+  cursor:pointer;z-index:2100;
+  transition:background .18s;
+}
+.hand-toggle:hover{background:rgba(0,0,0,.6);}
 
 /* ========== 頁面背景 & Reset ========== */
 *{margin:0;padding:0;box-sizing:border-box;}
