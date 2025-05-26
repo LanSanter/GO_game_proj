@@ -1,4 +1,5 @@
 import { drawBoard, drawStone, drawHighlight } from './board_core.js';
+import { territoryEstimate } from './territory_estimate.js';
 
 class DeathReviewState {
     constructor(initialState) {
@@ -76,6 +77,44 @@ function applyFinalRemoval(boardState, confirmedState) {
     }
 }
 
-export {DeathReviewState,  mergeConfirmedStates, applyFinalRemoval};
+
+//地盤顯示函數
+function drawTerritoryOverlay(ctx, territory, cellSize) {
+  for (let y = 0; y < territory.length; y++) {
+    for (let x = 0; x < territory[y].length; x++) {
+      const owner = territory[y][x];
+      if (!owner) continue;
+
+      const px = (x + 0.5) * cellSize;
+      const py = (y + 0.5) * cellSize;
+      const size = 8;
+
+      ctx.fillStyle = owner === "black" ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.7)";
+      ctx.fillRect(px - size / 2, py - size / 2, size, size);
+    }
+  }
+}
+// 完整棋盤繪製
+function drawTerritoryOnTop(ctx, cellSize, boardState, boardSize, lastMove) {
+        const { territory } = territoryEstimate(boardState, boardSize);
+        // Draw board + stones + highlights
+        drawBoard(ctx, cellSize, boardSize);
+        for (let y = 0; y < boardSize; y++) {
+            for (let x = 0; x < boardSize; x++) {
+                const color = boardState[y][x];
+                if (color) drawStone(ctx, x, y, cellSize, color);
+            }
+        }
+        if (lastMove) drawHighlight(ctx, lastMove.x, lastMove.y, cellSize);
+
+        // Draw overlay last
+        drawTerritoryOverlay(ctx, territory, cellSize);
+    }
+export {DeathReviewState,  mergeConfirmedStates, applyFinalRemoval, drawTerritoryOnTop};
+// DeathReviewState
 // const newState = runBenson(boardstate, boardsize); 
 // const Death_review = new DeathReviewState(newState);
+
+//drawTerritoryOnTop
+//drawTerritoryOnTop(ctx, cellSize, boardState, boardSize, lastMove);
+//領地繼續在函數內呼叫執行

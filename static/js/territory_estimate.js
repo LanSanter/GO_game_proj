@@ -1,5 +1,5 @@
 function territoryEstimate(boardState, boardSize) {
-  const influenceMap = Array.from({ length: boardSize }, () => Array(boardSize).fill(0));
+  let influenceMap = Array.from({ length: boardSize }, () => Array(boardSize).fill(0));
 
   // initialize influence map
   for (let y = 0; y < boardSize; y++) {
