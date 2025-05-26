@@ -96,7 +96,7 @@ function drawTerritoryOverlay(ctx, territory, cellSize) {
 }
 // 完整棋盤領地繪製
 function drawTerritoryOnTop(ctx, cellSize, boardState, boardSize, lastMove) {
-        const { territory } = territoryEstimate(boardState, boardSize);
+        const result = territoryEstimate(boardState, boardSize);
         // Draw board + stones + highlights
         drawBoard(ctx, cellSize, boardSize);
         for (let y = 0; y < boardSize; y++) {
@@ -108,7 +108,10 @@ function drawTerritoryOnTop(ctx, cellSize, boardState, boardSize, lastMove) {
         if (lastMove) drawHighlight(ctx, lastMove.x, lastMove.y, cellSize);
 
         // Draw overlay last
-        drawTerritoryOverlay(ctx, territory, cellSize);
+        drawTerritoryOverlay(ctx, result.territory, cellSize);
+
+        const resultBox = `黑地: ${result.nBlack}，白地: ${result.nWhite}，空地: ${result.nNone}`;
+        return resultBox;
     }
 export {DeathReviewState,  mergeConfirmedStates, applyFinalRemoval, drawTerritoryOnTop};
 // DeathReviewState
@@ -116,5 +119,5 @@ export {DeathReviewState,  mergeConfirmedStates, applyFinalRemoval, drawTerritor
 // const Death_review = new DeathReviewState(newState);
 
 //drawTerritoryOnTop
-//drawTerritoryOnTop(ctx, cellSize, boardState, boardSize, lastMove);
+//drawTerritoryOnTop({ctx, cellSize, boardState, boardSize, lastMove);
 //領地繼續在函數內呼叫執行

@@ -56,6 +56,20 @@ window.addEventListener("DOMContentLoaded", () => {
                 deathReview.drawOnTop(ctx, cellSize, boardState, boardSize, lastMove);
             }
         });
+
+        // 顯示結算按鈕
+        document.getElementById("finalize-btn").style.display = "inline-block";
+
+        // 結算邏輯
+        document.getElementById("finalize-btn").onclick = () => {
+            const confirmed = deathReview.getState();
+            applyFinalRemoval(boardState, confirmed);
+
+            // 領地分析
+            const msg = drawTerritoryOnTop(ctx, cellSize, boardState, boardSize, lastMove);
+            document.getElementById("territory-result").textContent = msg;
+
+        };
     };
     //註冊領地分布按鈕
     document.getElementById("territory-btn").onclick = () => {
