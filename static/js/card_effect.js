@@ -125,7 +125,7 @@ export const CARD_EFFECTS = (() => {
   effects[7]  = makeRotPattern([[0,0],[2,2]], 2);
   effects[8]  = makeRotPattern([[0,0],[1,0],[2,0],[2,1]], 4);
   effects[9]  = makeRotPattern([[0,0],[1,0],[1,1],[2,1]], 4);
-  effects[10] = makeRotPattern([[-1,-1],[1,-1],[0,2],[0,1]], 4);
+  effects[10] = makeRotPattern([[-1,-1],[1,-1],[0,0],[0,1]], 4);
   effects[11] = makeRotPattern([[-1,0],[0,0],[1,0],[0,1]], 4);
 
   /* ---------- 12 投石器 ---------- */
