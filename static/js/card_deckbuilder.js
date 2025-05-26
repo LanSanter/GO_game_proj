@@ -1,20 +1,19 @@
 /****************************************************************
- * card_deckbuilder.js  —— v4.10 (multi-deck)
+ * card_deckbuilder.js  —— v4.11 (multi-deck + 記憶啟用槽)
  * -------------------------------------------------------------
  * 變更摘要：
- *   • 新增 3 個可儲存的牌組槽 (savedDeck1 ~ savedDeck3)。
- *   • 以 UI 按鈕 / 下拉選單切換 currentSlot，獨立載入 / 儲存。
- *   • 可選擇自動切槽時先儲存當前牌組（預設開啟，可關閉）。
- *   • 其餘功能（拖曳、模板匯入、清空等）保持相容。
+ *   • 新增 LS_ACTIVE_SLOT → 切換牌組時同步記錄目前槽號。
+ *   • 進站時若 localStorage 有 activeDeckSlot 就沿用。
  ****************************************************************/
 
 /* === 基本常數 === */
-const MAX_CARD_ID = 60;
-const MAX_DECK    = 110;
-const IMG_DIR     = "/static/img/cards/";
-const LS_OWNED    = "myCards";
-const LS_DECK_PREFIX = "savedDeck";   // localStorage key prefix
-const TOTAL_SLOTS = 3;                 // 可用牌組槽數 (1..TOTAL_SLOTS)
+const MAX_CARD_ID      = 60;
+const MAX_DECK         = 110;
+const IMG_DIR          = "/static/img/cards/";
+const LS_OWNED         = "myCards";
+const LS_DECK_PREFIX   = "savedDeck";          // localStorage key prefix
+const LS_ACTIVE_SLOT   = "activeDeckSlot";     // ⬅ 新增
+const TOTAL_SLOTS      = 3;                    // 1..3
 
 /* === 範例模板 === */
 const AGGRO_TEMPLATE = {
@@ -29,8 +28,7 @@ const cards   = Array.from({length: MAX_CARD_ID}, (_,i)=>({id:i+1,energy:(i%3)+1
 const cardMap = new Map(cards.map(c=>[c.id,c]));
 
 /* === Deck Slot 狀態 === */
-let currentSlot = 1;                  // 目前操作中的槽 (1-based)
-let autoSaveOnSwitch = true;          // 切換牌組前自動儲存
+let currentSlot = parseInt(localStorage.getItem(LS_ACTIVE_SLOT) || "1", 10);
 
 /* === DOM refs === */
 let $col,$deck,$cnt,$ener,$prev,$slotBtns,$slotTag;
@@ -72,7 +70,7 @@ const hidePreview=()=>{$prev&&($prev.style.display="none");};
 /* === 渲染 === */
 function renderCollection(){
   $col.innerHTML="";
-  Object.entries(loadOwned()).sort((a,b)=>+a[0]-+a[0])
+  Object.entries(loadOwned()).sort((a,b)=>+a[0]-+b[0])
     .forEach(([id,cnt])=>$col.appendChild(makeCard(+id,cnt)));
   sortCards($col);
 }
@@ -186,6 +184,7 @@ function switchSlot(n){
   if(n<1||n>TOTAL_SLOTS) return;
   if(autoSaveOnSwitch) saveCurrentDeck();
   currentSlot=n;
+  localStorage.setItem(LS_ACTIVE_SLOT, n);      // ⬅ 新增
   renderDeck();
 }
 function updateSlotIndicator(){
@@ -218,7 +217,11 @@ function init(){
   });
 
   document.getElementById("clear-deck")?.addEventListener("click",clearDeck);
-  document.getElementById("save-deck") ?.addEventListener("click",()=>{ saveCurrentDeck(); alert(`牌組 ${currentSlot} 已儲存！`); });
+  document.getElementById("save-deck") ?.addEventListener("click",()=>{
+    saveCurrentDeck();
+    localStorage.setItem(LS_ACTIVE_SLOT, currentSlot);        // 避免手動切頁遺失
+    alert(`牌組 ${currentSlot} 已儲存！`);
+  });
   document.getElementById("btn-load-aggro")   ?.addEventListener("click",()=>applyTemplate(AGGRO_TEMPLATE,"速攻"));
   document.getElementById("btn-load-finisher")?.addEventListener("click",()=>applyTemplate(FINISHER_TEMPLATE,"終盤制霸"));
 

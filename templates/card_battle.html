@@ -1,4 +1,5 @@
 {% extends "card_base.html" %}
+
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/board.css') }}">
 <style>
@@ -9,22 +10,24 @@
     border-radius:8px;cursor:pointer;
     transition:transform .18s ease,box-shadow .18s ease;
   }
-  .card:hover{transform:scale(1.35);z-index:100;box-shadow:0 8px 20px rgba(0,0,0,.4);}  
-  .card.selected{transform:scale(1.45) translateY(-40px);box-shadow:0 12px 28px rgba(0,0,0,.55);}  
-  .card .cost{position:absolute;top:2px;right:4px;padding:0 6px;font-size:.8rem;font-weight:600;color:#fff;background:#c81e1e;border-radius:9999px;pointer-events:none;}
+  .card:hover     {transform:scale(1.35);z-index:100;box-shadow:0 8px 20px rgba(0,0,0,.4);}
+  .card.selected  {transform:scale(1.45) translateY(-40px);box-shadow:0 12px 28px rgba(0,0,0,.55);}
+  .card .cost{
+    position:absolute;top:2px;right:4px;padding:0 6px;
+    font-size:.8rem;font-weight:600;color:#fff;
+    background:#c81e1e;border-radius:9999px;pointer-events:none;
+  }
 
-  /* ===== 手牌區（固定在視窗底部置中） ===== */
+  /* ===== 手牌區（固定底部） ===== */
   #hand-zone{
     position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
     display:flex;gap:20px;z-index:2000;
     padding:4px 12px;border-radius:12px;
     background:rgba(0,0,0,.3);backdrop-filter:blur(4px);
   }
-  @media (max-width:768px) {
-    #hand-zone{gap:12px;}
-  }
+  @media (max-width:768px){ #hand-zone{gap:12px;} }
 
-  /* ===== 右下角預覽視窗 ===== */
+  /* ===== 右下角預覽 ===== */
   #card-preview{
     position:fixed;right:24px;bottom:24px;width:240px;aspect-ratio:2/3;
     background-size:cover;background-position:center;
@@ -32,23 +35,41 @@
     opacity:0;transition:opacity .2s;pointer-events:none;
   }
   #card-preview.show{opacity:1;}
-  @media (max-width:768px) {
-    #card-preview{width:160px;right:12px;bottom:12px;}
+  @media (max-width:768px){ #card-preview{width:160px;right:12px;bottom:12px;} }
+
+  /* ===== 記分板 ===== */
+  .score-board{
+    display:flex;gap:16px;margin-top:4px;
+    font-weight:600;font-size:1rem;
   }
+  .score-board span{min-width:3ch;display:inline-block;text-align:right;}
 </style>
 {% endblock %}
 
 {% block content %}
 <h1 class="text-center mb-4">圍棋！卡牌對戰！</h1>
+
 <div class="game-layout">
   <div class="main-panel">
-    <canvas id="board" width="570" height="570" style="border:1px solid #000;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,.2)"></canvas>
+    <!-- 棋盤 -->
+    <canvas id="board" width="570" height="570"
+            style="border:1px solid #000;border-radius:4px;
+                   box-shadow:0 2px 4px rgba(0,0,0,.2)"></canvas>
 
+    <!-- 回合 & 能量 -->
     <div class="info-bar mt-2 flex items-center gap-4">
-      <p class="m-0"><strong>目前輪到：</strong> <span id="turn-indicator">⚫ 玩家(黑)</span></p>
+      <p class="m-0"><strong>目前輪到：</strong>
+        <span id="turn-indicator">⚫ 玩家(黑)</span></p>
       <p class="m-0">能量：<span id="energy-value">2</span>/<span id="energy-max">2</span></p>
     </div>
 
+    <!-- ★ 記分板 ★ -->
+    <div class="score-board">
+      <p class="m-0">⚫ 黑目數：<span id="score-black">0</span></p>
+      <p class="m-0">⚪ 白目數：<span id="score-white">0</span></p>
+    </div>
+
+    <!-- 錯誤訊息 / 操作 -->
     <p id="error-msg" class="text-red-600 h-6"></p>
     <section class="battle-actions flex gap-2 mt-2">
       <button class="btn" id="btn-pass">結束回合</button>
@@ -57,10 +78,8 @@
   </div>
 </div>
 
-<!-- ★ 手牌顯示區（由 card_battle.js 動態填入） -->
+<!-- 動態手牌區 / 大圖預覽 -->
 <div id="hand-zone"></div>
-
-<!-- ★ 右下角大圖預覽框（由 card_battle.js 控制 show/hide） -->
 <div id="card-preview"></div>
 {% endblock %}
 
