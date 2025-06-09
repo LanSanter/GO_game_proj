@@ -46,17 +46,31 @@ venv\Scripts\activate           # Windows
 ### 2.安裝依賴
 ```bash
 cd 到妳目前的資料夾 #可做可不做
+
 pip install -r requirement.txt
+#或者
+# 1) 先把 pip 升級到最新
+python -m pip install --upgrade pip
+
+# 2) 裝 Flask、SocketIO 與 eventlet
+python -m pip install flask flask_socketio eventlet
+
+# 3) 裝 Flask-SQLAlchemy
+pip install Flask-SQLAlchemy
 ```
 
 ### 3.根目錄啟動伺服器
 ```bash
 python app.py
+python server.py           #這是卡牌對戰需要的伺服器
 ```
 開啟瀏覽器進入:
 ```bash
 http://localhost:5000
+http://(你的ip):5000/card?room=demo&player=1 #卡牌對戰玩家1
+http://(你的ip):5000/card?room=demo&player=2 #卡牌對戰玩家2
 ```
+ 
 
 ✅ 功能概覽
 
