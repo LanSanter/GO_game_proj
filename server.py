@@ -1,5 +1,3 @@
-# server.py  —— GO-Card Battle (v3.3.0)
-# =============================================================
 from app import app, socketio
 from flask import request
 from flask_socketio import join_room, leave_room, emit
@@ -7,29 +5,25 @@ from collections import defaultdict, deque
 import random, copy
 from typing import List, Tuple
 
-# ---------- 全域參數 ----------
 BOARD_SIZE  = 19
-MAX_HAND    = 10            # 基礎手牌上限，可被「越多越好」提升
+MAX_HAND    = 10
 MAX_ENERGY  = 6
 ENERGY_GROW = {1: 2, 5: 3, 7: 4, 9: 5, 11: 6}
 DIRECTIONS  = [(-1,0),(1,0),(0,-1),(0,1)]
 
-# ---------- 功能牌 (13–24) 能量 ----------
 FUNC_COST = {13:1,14:0,15:4,16:4,17:3,18:5,19:1,20:5,21:4,22:4,23:3,24:2}
 
-# ---------- 魔法牌 (25–51) 能量 ----------
 MAGIC_COST = {
     25:3, 26:5, 27:4, 28:4, 29:6, 30:3, 31:3, 32:4,
     33:6, 34:4, 35:2, 36:6, 37:4, 38:4, 39:4,
     40:3, 41:6, 42:2, 43:3, 44:2, 45:6, 46:0, 47:2,
-    48:5, 49:4, 50:4         # ★ 新增特殊牌
+    48:5, 49:4, 50:4
 }
 
 def rnd_sample(lst, n):
     n = min(n, len(lst)); random.shuffle(lst)
     return lst[:n], lst[n:]
 
-# ---------- 棋形卡 (1–12) ----------
 SHAPES = {
     1: dict(cost=1, vectors=[(0,0)],               dirs=['h']),
     2: dict(cost=2, vectors=[(0,0),(1,0)],         dirs=['h','v']),
@@ -48,7 +42,7 @@ SHAPES = {
     9:  dict(cost=4, vectors=[(0,0),(1,0),(1,1),(2,1)], dirs=['r0','r90','r180','r270']),
     10: dict(cost=4, vectors=[(-1,-1),(1,-1),(0,0),(0,1)], dirs=['r0','r90','r180','r270']),
     11: dict(cost=4, vectors=[(-1,0),(0,0),(1,0),(0,1)],   dirs=['r0','r90','r180','r270']),
-    12: dict(cost=5, vectors=None, dirs=['random5'])        # 投石器
+    12: dict(cost=5, vectors=None, dirs=['random5'])
 }
 
 def rotate(vecs, dirn):
@@ -60,12 +54,10 @@ def rotate(vecs, dirn):
     if dirn=='diag4': return [(-dy, dx) for dx,dy in vecs]
     return vecs
 
-# ---------- 預設牌組 ----------
 def make_deck()->deque[int]:
     cards=[1]*40+[2,3,4,5]*6+[6,7]*5+[8,9,10,11]*4+[12]*3
     random.shuffle(cards); return deque(cards)
 
-# ---------- 初始狀態 ----------
 def initial_state():
     return {
         "turn":1,"turnCount":1,
@@ -77,7 +69,7 @@ def initial_state():
         "playCount":{"1":0,"2":0},
         "extraDraw":{"1":0,"2":0},
         "drawUsed":{"1":False,"2":False},
-        "placements":[],                       # ★ 每手落子紀錄
+        "placements":[],
         "effects":{
             "othello_next":{},
             "mirage_next":{},
@@ -85,32 +77,27 @@ def initial_state():
             "ban_magic_until":0,
             "blind_until":0,
             "free_magic":{},
-            "cost_reduction":{},               # pid:{card:val}
-            "hand_cap_bonus":{},               # pid:int
+            "cost_reduction":{},
+            "hand_cap_bonus":{},        
             "barriers":[],
             "pixie":{},
             "guard":{},
             "mines":[],
             "mischief":0,
-            "ban_group":None                  # {"kind":"shape/func/magic","until":T}
+            "ban_group":None                  
         }
     }
 
-# ---------- 推送狀態 ----------
 def _push_state(room):
     st  = room.state; eff=st["effects"]
     for sid,pid in room.players.items():
         view = copy.deepcopy(st)
         opp  = "2" if pid=="1" else "1"
         view["hands"][opp] = len(view["hands"][opp])
-        # 致盲：把棋盤蓋住
         if st["turnCount"] <= eff.get("blind_until",0):
             view["board"] = [[0]*BOARD_SIZE for _ in range(BOARD_SIZE)]
         emit("state", view, room=sid)
 
-# =============================================================
-#                       Room
-# =============================================================
 class Room:
     def __init__(self, rid:str):
         self.id=rid
@@ -119,7 +106,6 @@ class Room:
         self.players={}
         self.ready=set(); self.started=False
 
-    # =============== 工具 =================
     def _inside(self,x,y): return 0<=x<BOARD_SIZE and 0<=y<BOARD_SIZE
 
     def _hand_cap(self,pid):
@@ -138,7 +124,6 @@ class Room:
         for cid in cards:
             h.remove(cid); self.state["grave"][pid].append(cid)
 
-    # ----- 捕氣 -----
     def _get_group_and_liberties(self,x:int,y:int):
         col=self.state["board"][y][x]
         if col==0: return [],True
@@ -156,7 +141,6 @@ class Room:
                 elif v==col and (nx,ny) not in vis: st.append((nx,ny))
         return group,setlib
 
-    # =============== 加入、開始 ===============
     def add_player(self,sid,pid,deck):
         if pid in self.players.values():
             return emit("error",{"msg":"此 player 已在房"},room=sid)
@@ -181,7 +165,6 @@ class Room:
             v=copy.deepcopy(self.state); opp="2" if pid=="1" else "1"
             v["hands"][opp]=len(v["hands"][opp]); emit("start",v,room=sid)
 
-    # =============== 行為入口 ===============
     def handle_action(self,pid,action):
         if not self.started:
             return emit("error",{"msg":"尚未開始"},room=self.id)
@@ -197,8 +180,6 @@ class Room:
             return
         _push_state(self)
 
-    # =============== 魔法輔助 ===============
-    # ---- 是否被結界 / 禁地 ----
     def _is_forbidden(self,pid,x,y):
         tc=self.state["turnCount"]
         for b in self.state["effects"]["barriers"]:
@@ -208,7 +189,6 @@ class Room:
                 if b["both"] or b["owner"]!=pid: return True
         return False
 
-    # ---- 觸發地雷 ----
     def _check_mine_trigger(self,coords:list[Tuple[int,int]]):
         eff=self.state["effects"]; triggered=False
         for m in eff["mines"]:
@@ -217,7 +197,6 @@ class Room:
                 m["active"]=False; triggered=True
         if triggered: self.end_turn()
 
-    # ---- Othello 翻轉 ----
     def _othello_flip(self,pid,coords):
         board=self.state["board"]; pc=int(pid); oc=3-pc
         for x0,y0 in coords:
@@ -228,22 +207,18 @@ class Room:
                 if self._inside(cx,cy) and board[cy][cx]==pc and line:
                     for lx,ly in line: board[ly][lx]=pc
 
-    # =============== play_card ===============
     def play_card(self,pid:str,card_id:int,params:dict):
         hand=self.state["hands"][pid]; st=self.state; eff=st["effects"]
         tc=st["turnCount"]; board = st["board"]
 
-        # ---- 牌種制約檢查 ----
         kind = "shape" if card_id<=12 else ("func" if card_id<=24 else "magic")
         ban  = eff.get("ban_group")
         if ban and tc<=ban["until"] and ban["kind"]==kind:
             return emit("error",{"msg":"此牌種被制約"},room=self.id)
 
-        # ---- 禁魔檢查 ----
         if 25<=card_id<=51 and tc<=eff.get("ban_magic_until",0):
             return emit("error",{"msg":"魔法被封禁"},room=self.id)
 
-        # ---- cost 計算輔助 ----
         def _calc_cost(cid,base):
             red=eff["cost_reduction"].get(pid,{}).get(cid,0)
             return max(0,base-red)
@@ -252,7 +227,6 @@ class Room:
             if eff["free_magic"].get(pid): return 0
             return _calc_cost(cid,MAGIC_COST.get(cid,1))
 
-        # ---------- 功能牌 13–24 ----------
         if 13<=card_id<=24:
             cost=_calc_cost(card_id,FUNC_COST[card_id])
             if card_id!=14 and st["energy"][pid]<cost:
@@ -261,7 +235,6 @@ class Room:
             hand.remove(card_id); st["grave"][pid].append(card_id)
             st["playCount"][pid]+=1; return
 
-        # ---------- 魔法牌 25–51 ----------
         if 25<=card_id<=51:
             cost=_get_magic_cost(card_id)
             if st["energy"][pid]<cost:
@@ -274,13 +247,11 @@ class Room:
             st["playCount"][pid]+=1
             return
 
-        # ---------- 棋形卡 1–12 ----------
         shape=SHAPES.get(card_id)
         if not shape: return emit("error",{"msg":"未定義卡"},room=self.id)
         cost=_calc_cost(card_id,shape["cost"])
         if st["energy"][pid]<cost: return emit("error",{"msg":"能量不足"},room=self.id)
 
-        # --- 投石器 (12) ---
         if card_id==12:
             empty=[(x,y) for y in range(BOARD_SIZE) for x in range(BOARD_SIZE)
                    if board[y][x]==0 and not self._is_forbidden(pid,x,y)]
@@ -302,11 +273,9 @@ class Room:
                 if board[y][x] or self._is_forbidden(pid,x,y):
                     return emit("error",{"msg":"無法落子"},room=self.id)
 
-        # --- 落子 ---
         pc=int(pid); oc=3-pc
         for x,y in coords: board[y][x]=pc
 
-        # 提子
         cap=[]
         for x,y in coords:
             for dx,dy in DIRECTIONS:
@@ -318,15 +287,12 @@ class Room:
             if eff["guard"].pop((x,y),None): continue
             board[y][x]=0
 
-        # 自殺檢查
         if all(not self._get_group_and_liberties(x,y)[1] for x,y in coords):
             for x,y in coords: board[y][x]=0
             return emit("error",{"msg":"自殺手"},room=self.id)
 
-        # 翻轉 (黑白棋模式)
         if eff["othello_next"].pop(pid,None): self._othello_flip(pid,coords)
 
-        # Mirage 第二子 & 定時消失
         if eff["mirage_next"].pop(pid,None):
             sec=params.get("second")
             if not sec: return emit("error",{"msg":"缺 second"},room=self.id)
@@ -336,18 +302,13 @@ class Room:
             board[sy][sx]=pc
             eff["mirage_remove"].append((sx,sy,tc+6))
 
-        # 地雷判定
         self._check_mine_trigger(coords)
 
-        # ★ 紀錄本回合落子
         st["placements"].append({"turn":tc,"coords":coords})
 
-        # 成功扣能 / 移牌
         st["energy"][pid]-=cost; hand.remove(card_id)
         st["playCount"][pid]+=1
 
-    # =============== 魔法牌實作 =================
-    # ---- 25 斗轉星移 ----
     def _magic_25(self,pid,params):
         src=params.get("src"); dst=params.get("dst")
         if not src or not dst: emit("error",{"msg":"缺 src/dst"},room=self.id); return False
@@ -359,7 +320,6 @@ class Room:
             emit("error",{"msg":"棋子不符"},room=self.id); return False
         bd[sy][sx],bd[dy][dx]=bd[dy][dx],bd[sy][sx]; return True
 
-    # ---- 26 爆破魔法 ----
     def _magic_26(self,pid,params):
         a=params.get("anchor"); bd=self.state["board"]
         if not a: emit("error",{"msg":"缺 anchor"},room=self.id); return False
@@ -371,7 +331,6 @@ class Room:
                     bd[y][x]=0
         return True
 
-    # ---- 27 聖火 ----
     def _magic_27(self,pid,params):
         a=params.get("anchor"); dirn=params.get("dir"); bd=self.state["board"]
         if not a or dirn not in ("h","v"): emit("error",{"msg":"缺參數"},room=self.id); return False
@@ -384,7 +343,6 @@ class Room:
                 if not self.state["effects"]["guard"].pop((ax,y),None): bd[y][ax]=0
         return True
 
-    # ---- 28 流星群 ----
     def _magic_28(self,pid,params):
         bd=self.state["board"]; guard=self.state["effects"]["guard"]
         for _ in range(3):
@@ -395,30 +353,24 @@ class Room:
                     if not guard.pop((x,y),None): bd[y][x]=0
         return True
 
-    # ---- 29 這是黑白棋嗎 ----
     def _magic_29(self,pid,params):
         self.state["effects"]["othello_next"][pid]=True; return True
 
-    # ---- 30 海市蜃樓 ----
     def _magic_30(self,pid,params):
         self.state["effects"]["mirage_next"][pid]=True; return True
 
-    # ---- 31 我，討厭魔法 ----
     def _magic_31(self,pid,params):
         self.state["effects"]["ban_magic_until"]=self.state["turnCount"]+10; return True
 
-    # ---- 32 致盲 ----
     def _magic_32(self,pid,params):
         self.state["effects"]["blind_until"]=self.state["turnCount"]+6; return True
 
-    # ---- 33 魔法大師 ----
     def _magic_33(self,pid,params):
         self._draw_cards(pid,3)
         if any(25<=cid<=51 for cid in self.state["hands"][pid][-3:]):
             self.state["effects"]["free_magic"][pid]=True
         return True
 
-    # ---- 34 魔法學徒 ----
     def _magic_34(self,pid,params):
         h=self.state["hands"][pid]; d=self.decks[pid]
         while d:
@@ -428,7 +380,6 @@ class Room:
                 eff[cid]=2; break
         return True
 
-    # ---- 35 咬 ----
     def _magic_35(self,pid,params):
         x,y=params.get("x"),params.get("y")
         if x is None or y is None: emit("error",{"msg":"缺座標"},room=self.id); return False
@@ -438,7 +389,6 @@ class Room:
         if self.state["effects"]["guard"].pop((x,y),None): return True
         bd[y][x]=0; return True
 
-    # ---- 36 瘋狂咬咬 ----
     def _magic_36(self,pid,params):
         targets=params.get("targets",[])
         if len(targets)!=4: emit("error",{"msg":"需 4 格"},room=self.id); return False
@@ -450,7 +400,6 @@ class Room:
             if not guard.pop((x,y),None): bd[y][x]=0
         return True
 
-    # ---- 37 結界 ----
     def _magic_37(self,pid,params):
         a=params.get("anchor")
         if not a: emit("error",{"msg":"缺 anchor"},room=self.id); return False
@@ -460,7 +409,6 @@ class Room:
              "until":self.state["turnCount"]+6,"both":False,"owner":pid})
         return True
 
-    # ---- 38 禁地 ----
     def _magic_38(self,pid,params):
         a=params.get("anchor")
         if not a: emit("error",{"msg":"缺 anchor"},room=self.id); return False
@@ -470,17 +418,13 @@ class Room:
              "until":self.state["turnCount"]+10,"both":True,"owner":pid})
         return True
 
-    # ---- 39 小精靈 ----
     def _magic_39(self,pid,params):
         self.state["effects"]["pixie"][pid]=3; return True
 
-    # ---- 40 感化 ----
     def _magic_40(self,pid,params): return True
 
-    # ---- 41 洗腦 ----
     def _magic_41(self,pid,params): return True
 
-    # ---- 42 守護 ----
     def _magic_42(self,pid,params):
         x,y=params.get("x"),params.get("y")
         bd=self.state["board"]
@@ -488,7 +432,6 @@ class Room:
             emit("error",{"msg":"需選己棋"},room=self.id); return False
         self.state["effects"]["guard"][(x,y)]=True; return True
 
-    # ---- 43 地雷 ----
     def _magic_43(self,pid,params):
         locs=params.get("points",[])
         if len(locs)!=3: emit("error",{"msg":"需 3 點"},room=self.id); return False
@@ -499,11 +442,9 @@ class Room:
             [{"pos":(x,y),"active":True} for x,y in locs])
         return True
 
-    # ---- 44 搗蛋鬼 ----
     def _magic_44(self,pid,params):
         self.state["effects"]["mischief"]=6; return True
 
-    # ---- 46 / 47 能量藥劑 ----
     def _magic_46(self,pid,params):
         self.state["energy"][pid]=min(self.state["energyCap"][pid],self.state["energy"][pid]+2); return True
     def _magic_47(self,pid,params):
@@ -511,7 +452,6 @@ class Room:
         delta=random.randint(1,6)
         self.state["energy"][pid]=min(self.state["energyCap"][pid],self.state["energy"][pid]+delta); return True
 
-    # ---- 48 事前準備 ----------------------------------------
     def _magic_48(self,pid,params):
         target=params.get("card")
         if target is None:
@@ -520,7 +460,6 @@ class Room:
         eff[target]=eff.get(target,0)+2
         return True
 
-    # ---- 49 女僕的懷表 --------------------------------------
     def _magic_49(self,pid,params):
         tc=self.state["turnCount"]
         targets=[p for p in self.state["placements"] if p["turn"] in (tc-1,tc-2)]
@@ -531,13 +470,11 @@ class Room:
                     bd[y][x]=0
         return True
 
-    # ---- 50 越多越好 ----------------------------------------
     def _magic_50(self,pid,params):
         bonus=self.state["effects"]["hand_cap_bonus"]
         bonus[pid]=bonus.get(pid,0)+1
         return True
 
-    # ---- 51 制約 -------------------------------------------
     def _magic_51(self,pid,params):
         kind=params.get("kind")
         if kind not in ("shape","func","magic"):
@@ -545,12 +482,10 @@ class Room:
         self.state["effects"]["ban_group"]={"kind":kind,"until":self.state["turnCount"]+6}
         return True
 
-    # =============== end_turn ===============
     def end_turn(self):
         s=self.state; eff=s["effects"]; now=str(s["turn"]); nxt="2" if now=="1" else "1"
         s["turnCount"]+=1; s["turn"]=int(nxt)
 
-        # 能量 cap 成長
         nc=ENERGY_GROW.get(s["turnCount"])
         if nc and nc>s["energyCap"]["1"]:
             diff=nc-s["energyCap"]["1"]
@@ -558,24 +493,19 @@ class Room:
                 s["energyCap"][p]=nc
                 s["energy"][p]=min(s["energy"][p]+diff,nc)
 
-        # 回滿能量 + 抽牌
         s["energy"][nxt]=s["energyCap"][nxt]
         self._draw_cards(nxt,1)
 
-        # 額外抽
         ex=s["extraDraw"][nxt]
         if ex: self._draw_cards(nxt,ex); s["extraDraw"][nxt]=0
 
-        # 清本回合旗標
         eff["free_magic"].pop(now,None)
 
-        # Mirage 到期移除
         bd=s["board"]
         eff["mirage_remove"][:]=[(x,y,t) for x,y,t in eff["mirage_remove"] if t>=s["turnCount"]]
         for x,y,t in [v for v in eff["mirage_remove"] if t==s["turnCount"]]:
             bd[y][x]=0
 
-        # Pixie 自動下子（自己的回合開始）
         if eff["pixie"].get(nxt):
             empty=[(x,y) for y in range(BOARD_SIZE) for x in range(BOARD_SIZE) if bd[y][x]==0]
             if empty:
@@ -583,7 +513,6 @@ class Room:
             eff["pixie"][nxt]-=1
             if eff["pixie"][nxt]==0: del eff["pixie"][nxt]
 
-        # Mischief 亂破壞
         if eff["mischief"]>0:
             stones=[(x,y) for y in range(BOARD_SIZE) for x in range(BOARD_SIZE) if bd[y][x]]
             if stones:
@@ -591,16 +520,11 @@ class Room:
                 if not eff["guard"].pop((x,y),None): bd[y][x]=0
             eff["mischief"]-=1
 
-        # 清 play / drawUsed
         for p in (now,nxt): s["playCount"][p]=0; s["drawUsed"][p]=False
 
-    # =============== 斷線 ===============
     def remove_player(self,sid):
         self.players.pop(sid,None); leave_room(self.id)
 
-# =============================================================
-#               Rooms & 事件
-# =============================================================
 rooms=defaultdict(lambda:Room("temp"))
 def get_room(rid):
     if rid not in rooms or rooms[rid].id=="temp": rooms[rid]=Room(rid)
@@ -627,6 +551,5 @@ def on_disconnect():
             else: emit("waiting","對手斷線，等待重連…",room=rid)
             break
 
-# =============================================================
 if __name__=="__main__":
     socketio.run(app,host="0.0.0.0",port=5000,debug=True)

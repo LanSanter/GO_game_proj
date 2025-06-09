@@ -1,38 +1,20 @@
-/* ==============================================================
- * card_battle.js  —— v3.3.0  (Hand Toggle + minor polish)
- * --------------------------------------------------------------
- *  ● 新增：
- *      1. #hand-toggle 按鈕，可收合／展開手牌，不再遮住「結束回合」。
- *      2. 收合時自動取消選牌並隱藏右下大圖預覽。
- *  ● 其餘既有功能（旋轉、多牌組、Benson 活死判定…）全數保留。
- * ============================================================ */
-
 import { CARD_EFFECTS } from "./card_effect.js";
 import { io } from "https://cdn.socket.io/4.7.2/socket.io.esm.min.js";
 
-/* ========= 連線參數 ========= */
 const urlParams   = new URLSearchParams(location.search);
 const ROOM_ID     = urlParams.get("room")   || "demo";
 const playerIdStr = urlParams.get("player") || urlParams.get("pid") || "1";
 
-/* ---- 牌組槽判定 -------------------------------------------------
-   1. URL ?slot=2   → 最高優先
-   2. localStorage.activeDeckSlot
-   3. 預設 1
------------------------------------------------------------------- */
 const LS_ACTIVE_SLOT = "activeDeckSlot";
 const deckSlotStr = urlParams.get("slot") ||
                     localStorage.getItem(LS_ACTIVE_SLOT) || "1";
 const deckSlot    = Math.max(1, Math.min(3, parseInt(deckSlotStr, 10) || 1));
 
-/* ---- 讀取對應槽的牌組 ----------------------------------------- */
 const savedDeckKey = `savedDeck${deckSlot}`;
 const savedDeck    = JSON.parse(localStorage.getItem(savedDeckKey) || "[]");
 
-/* ---- 建立 Socket 連線 ----------------------------------------- */
 const socket = io(location.origin, { transports: ["websocket"] });
 
-/* ========= 主要 DOM ========= */
 let overlay = document.getElementById("overlay");
 if (!overlay) {
   overlay = Object.assign(document.createElement("div"), { id: "overlay" });
@@ -53,7 +35,6 @@ const energyMaxEl = document.getElementById("energy-max");
 const handDiv     = document.getElementById("hand-zone");
 const passBtn     = document.getElementById("btn-pass");
 
-/* ★★★ 手牌收合按鈕（中央下方） ★★★ */
 let handToggleBtn = document.getElementById("hand-toggle");
 if (!handToggleBtn){
   handToggleBtn = Object.assign(document.createElement("button"),{
@@ -63,7 +44,6 @@ if (!handToggleBtn){
   document.body.appendChild(handToggleBtn);
 }
 
-/* ========= 動態插入記分板 ========= */
 let scoreBlackEl  = document.getElementById("score-black");
 let scoreWhiteEl  = document.getElementById("score-white");
 (function injectScoreboard(){
@@ -83,7 +63,6 @@ let scoreWhiteEl  = document.getElementById("score-white");
   scoreWhiteEl = document.getElementById("score-white");
 })();
 
-/* ========= 遊戲狀態 ========= */
 const BOARD_SIZE = 19;
 let GRID_SIZE = 32, RADIUS = 14;
 
@@ -96,17 +75,14 @@ let energy     = 2;
 let hand       = [];
 let playerId   = playerIdStr;
 
-/* --- 手牌選取 / 高亮暫存 --- */
 let selectedCardId = null;
 let selectedCardEl = null;
 let pendingParams  = {};
 let highlightMap   = [];
 let previewStones  = [];
 
-/* --- 手牌收合狀態 --- */
 let handCollapsed = false;
 
-/* ========= Socket 事件 ========= */
 socket.on("waiting", m => { overlay.textContent = m; overlay.style.display="flex"; });
 socket.on("start",   s => { overlay.style.display="none"; syncState(s); });
 socket.on("state",   syncState);
@@ -122,7 +98,6 @@ socket.on("connect", () => {
   });
 });
 
-/* ========= 畫面初始化 ========= */
 document.addEventListener("DOMContentLoaded", () => {
   canvas = document.getElementById("board");
   ctx    = canvas.getContext("2d");
@@ -140,10 +115,10 @@ document.addEventListener("DOMContentLoaded", () => {
   handToggleBtn.addEventListener("click", toggleHandZone);
 
   redraw();
-  updateScoreBoard();   // 初始化記分
+  updateScoreBoard();
 });
 
-/* ========= 狀態同步 ========= */
+/* 狀態同步  */
 function syncState(s){
   board      = s.board;
   current    = s.turn;
@@ -160,16 +135,13 @@ function syncState(s){
   updateScoreBoard();
 }
 
-/* 更新能量顯示 */
 function updateEnergy(){
   if (energyNow)   energyNow.textContent  = energy;
   if (energyMaxEl) energyMaxEl.textContent = energyCap;
 }
 
-/* ========= 行為送出 ========= */
 function sendAction(o){ socket.emit("action",{room:ROOM_ID,action:o}); }
 
-/* 將「等待參數」轉換為伺服器可識別格式 */
 function emitPlay(){
   const p = { ...pendingParams };
   if (p.anchor){
@@ -181,32 +153,28 @@ function emitPlay(){
   clearSelection();
 }
 
-/* ========= 手牌區 ========= */
-/* 重新渲染全部手牌 */
 function redrawHand(){
   handDiv.innerHTML="";
   hand.forEach(id=>handDiv.appendChild(createCardEl(id)));
 }
-/* 建立單張卡牌 DOM */
 function createCardEl(id){
   const d=CARD_EFFECTS[id]||{cost:0};
   const el=document.createElement("div");
   el.className="card";
   el.style.backgroundImage = `url('/static/img/cards/${id}.jpg')`;
   el.dataset.id=id;
-  // 能量標籤
+  //能量標籤
   const tag=document.createElement("span");
   tag.className="cost"; tag.textContent=d.cost; el.appendChild(tag);
-  // 滑入顯示大圖
+  //滑入顯示大圖
   el.onmouseenter=()=>showPreview(id); el.onmouseleave=hidePreview;
-  // 點擊選取
+  //點擊選取
   el.onclick=()=>{
     if(energy<d.cost){toast("能量不足");return;}
     selectCard(el,id);
   };
   return el;
 }
-/* 選取 / 取消選取 */
 function selectCard(el,id){
   if(selectedCardEl===el){clearSelection();return;}
   selectedCardEl?.classList.remove("selected");
@@ -218,14 +186,12 @@ function selectCard(el,id){
   };
   highlightAnchors(id);
 }
-/* 清除選取 */
 function clearSelection(){
   selectedCardEl?.classList.remove("selected");
   selectedCardEl=null; selectedCardId=null;
   pendingParams={}; highlightMap=[]; previewStones=[]; redraw();
 }
 
-/* ========= 手牌收合 / 展開 ========= */
 function toggleHandZone(){
   handCollapsed = !handCollapsed;
   handDiv.classList.toggle("collapsed", handCollapsed);
@@ -234,7 +200,6 @@ function toggleHandZone(){
   hidePreview();
 }
 
-/* ========= 右下角卡牌預覽 ========= */
 function injectPreviewBox(){
   if(document.getElementById("card-preview"))return;
   const b=document.createElement("div");
@@ -248,7 +213,7 @@ function injectPreviewBox(){
   document.body.appendChild(b);
 }
 function showPreview(id){
-  if(handCollapsed) return;                 // 收合時不顯示
+  if(handCollapsed) return;
   const b=document.getElementById("card-preview");
   if(b){b.style.backgroundImage = `url('/static/img/cards/${id}.jpg')`; b.style.opacity=1;}
 }
@@ -257,7 +222,6 @@ function hidePreview(){
   if(b) b.style.opacity=0;
 }
 
-/* ========= Canvas 繪製 ========= */
 function redraw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawBoard();    // 木紋 / 線條 / 星位
@@ -265,7 +229,6 @@ function redraw(){
   drawPreview();  // 半透明預覽
   highlightMap.forEach(([r,c])=>drawHighlight(r,c)); // 合法點高亮
 }
-/* 畫棋盤 */
 function drawBoard(){
   ctx.fillStyle="#deb887";
   ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -276,7 +239,6 @@ function drawBoard(){
     ctx.beginPath(); ctx.moveTo(GRID_SIZE*i,GRID_SIZE);
     ctx.lineTo(GRID_SIZE*i,GRID_SIZE*BOARD_SIZE); ctx.stroke();
   }
-  // 19 路星位
   if(BOARD_SIZE===19){
     [3,9,15].forEach(r=>[3,9,15].forEach(c=>{
       ctx.beginPath();
@@ -285,11 +247,10 @@ function drawBoard(){
     }));
   }
 }
-/* 畫棋子 */
 function drawStones(){ board.forEach((row,r)=>row.forEach((v,c)=>v&&drawStone(r,c,v,false))); }
-/* 畫預覽 */
+
 function drawPreview(){ previewStones.forEach(([r,c])=>drawStone(r,c,current,true)); }
-/* 單顆棋子 */
+
 function drawStone(r,c,color,ghost=false){
   const x=GRID_SIZE*(c+1),y=GRID_SIZE*(r+1);
   const g=ctx.createRadialGradient(x-RADIUS*.4,y-RADIUS*.4,RADIUS*.1,x,y,RADIUS*1.05);
@@ -306,15 +267,12 @@ function drawStone(r,c,color,ghost=false){
   ctx.strokeStyle=ghost?"rgba(0,0,0,.25)":"rgba(0,0,0,.5)";
   ctx.stroke();
 }
-/* 合法點小圓圈 */
 function drawHighlight(r,c){
   const x=GRID_SIZE*(c+1),y=GRID_SIZE*(r+1);
   ctx.fillStyle="rgba(241,165,23,0.6)";
   ctx.beginPath(); ctx.arc(x,y,RADIUS*0.35,0,Math.PI*2); ctx.fill();
 }
 
-/* ========= 棋盤互動 ========= */
-// 滑鼠移動 → 更新預覽石
 function onBoardHover(e){
   previewStones.length=0;
   if(!selectedCardId)return;
@@ -322,12 +280,10 @@ function onBoardHover(e){
   const c = Math.round((e.clientX - rect.left - GRID_SIZE) / GRID_SIZE);
   const r = Math.round((e.clientY - rect.top  - GRID_SIZE) / GRID_SIZE);
   if(r<0||r>=BOARD_SIZE||c<0||c>=BOARD_SIZE){ redraw(); return; }
-  // 非合法點則重繪並返回
   if(!highlightMap.some(([hr,hc])=>hr===r&&hc===c)){ redraw(); return; }
 
   const dir = pendingParams.dir || "h";
   const eff = CARD_EFFECTS[selectedCardId].effect(board,current,{anchor:{x:c,y:r},dir});
-  // 將差異轉成半透明石
   if(eff.ok && eff.board){
     for(let y=0;y<BOARD_SIZE;y++)
       for(let x=0;x<BOARD_SIZE;x++)
@@ -336,7 +292,6 @@ function onBoardHover(e){
   }
   redraw();
 }
-// 點擊落子
 function onBoardClick(e){
   if(!selectedCardId)return;
   const rect=canvas.getBoundingClientRect();
@@ -347,7 +302,6 @@ function onBoardClick(e){
   pendingParams.anchor={x:c,y:r};
   emitPlay();
 }
-// 右鍵旋轉卡牌方向
 function onRightClick(e){
   if(!selectedCardId) return;
   const card = CARD_EFFECTS[selectedCardId];
@@ -360,7 +314,6 @@ function onRightClick(e){
   highlightAnchors(selectedCardId);
 }
 
-/* ========= 合法落子計算 ========= */
 function highlightAnchors(id){
   highlightMap.length=0;
   previewStones.length=0;
@@ -372,23 +325,20 @@ function highlightAnchors(id){
   redraw();
 }
 
-/* ========= 活死判定 + 目數 ========= */
 function updateScoreBoard(){
   const {black,white} = computeScore();
   if(scoreBlackEl) scoreBlackEl.textContent = black;
   if(scoreWhiteEl) scoreWhiteEl.textContent = white;
 }
 
-/* ----- 核心：Benson + DFS 計算領地 ----- */
 function computeScore(){
   const visited  = Array.from({length:BOARD_SIZE},()=>Array(BOARD_SIZE).fill(false));
   const groupId  = Array.from({length:BOARD_SIZE},()=>Array(BOARD_SIZE).fill(-1));
-  const groups   = [];   // {color, stones, libs, safe}
+  const groups   = [];
 
   const dir4 = [[1,0],[-1,0],[0,1],[0,-1]];
   const inBoard = (r,c)=>r>=0&&r<BOARD_SIZE&&c>=0&&c<BOARD_SIZE;
 
-  /* Step 1. 掃所有棋群 + 氣 */
   for(let r=0;r<BOARD_SIZE;r++){
     for(let c=0;c<BOARD_SIZE;c++){
       if(board[r][c]===0 || visited[r][c]) continue;
@@ -414,7 +364,6 @@ function computeScore(){
     }
   }
 
-  /* Step 2. 掃所有空域，標記「眼」擁有者 (0=共有眼) */
   const eyeVisited = Array.from({length:BOARD_SIZE},()=>Array(BOARD_SIZE).fill(false));
   const eyeOwner   = new Map();
 
@@ -447,7 +396,6 @@ function computeScore(){
     }
   }
 
-  /* Step 3. 判定群組 safe (≥2眼  或  libs>1) */
   groups.forEach(g=>{
     let eyeCnt=0;
     g.libs.forEach(l=>{
@@ -456,7 +404,6 @@ function computeScore(){
     if(eyeCnt>=2 || g.libs.size>1) g.safe=true;
   });
 
-  /* Step 4. 計領地：被同色 safe 棋全包圍的空域 */
   const terrVis = Array.from({length:BOARD_SIZE},()=>Array(BOARD_SIZE).fill(false));
   let black=0, white=0;
 
@@ -495,8 +442,6 @@ function computeScore(){
   return {black,white};
 }
 
-/* ========= 工具 ========= */
-function toast(m){console.log(m);}   // 簡易 Toast，可替換正式 UI
+function toast(m){console.log(m);}
 
-/* ========= 導出 ========= */
 export { board,current,GRID_SIZE };

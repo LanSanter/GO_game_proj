@@ -1,23 +1,9 @@
-/* ==============================================================
- * card_effect.js  —— v5.0
- * --------------------------------------------------------------
- *   • 棋形卡 1–12：支援正確旋轉（象、尖、飛、L、閃電、Y、ㄒ 均已修正）
- *   • 功能牌 13–24：僅做 cost／needDir 定義，效果交給後端
- *   • 魔法牌 25–47：
- *       - 25 / 26 / 27 / 28 / 35 / 40 / 41 / 46 / 47 可在前端試算落點
- *   • 新增特殊牌 45–50（成本已定；效果交由伺服器）
- *   • 其他未實作編號：預設「單點・能量 1」
- * ============================================================ */
-
-/* === 旋轉序列（0°→90°→180°→270°） === */
 const DIR_ORDER = ['r0', 'r90', 'r180', 'r270'];
 
-/* === 基礎工具 === */
-const copy   = b => b.map(r => r.slice());                         // 深複製 2D 棋盤
+const copy   = b => b.map(r => r.slice());
 const inside = (b, x, y) => y >= 0 && y < b.length && x >= 0 && x < b[0].length;
-const rotateCW = ([dx, dy]) => [-dy, dx];                          // 螢幕座標順時針 90°
+const rotateCW = ([dx, dy]) => [-dy, dx];
 
-/* ---------- 工具：可旋轉固定圖形 ---------- */
 const makeRotPattern = (basePts, cost) => ({
   cost,
   needDir: true,
@@ -40,13 +26,9 @@ const makeRotPattern = (basePts, cost) => ({
   }
 });
 
-/* ==================================================
- *                卡牌效果主表
- * ================================================== */
 export const CARD_EFFECTS = (() => {
   const effects = {};
 
-  /* ---------- 基本：單點落子 ---------- */
   const single = cost => ({
     cost, needDir: false,
     effect: (b, c, { anchor }) => {
@@ -58,7 +40,6 @@ export const CARD_EFFECTS = (() => {
     }
   });
 
-  /* ---------- 直 / 橫連兩子 ---------- */
   const makeLine2 = cost => ({
     cost, needDir: true, dirs: ['h', 'v'],
     effect: (b, c, { anchor, dir }) => {
@@ -72,10 +53,8 @@ export const CARD_EFFECTS = (() => {
     }
   });
 
-  /* ---------- 45° 相鄰兩子（尖） ---------- */
   const makeTip = cost => makeRotPattern([[0, 0], [1, 1]], cost);
 
-  /* ---------- 跳（gap = 中空格數） ---------- */
   const makeJump = (gap, cost) => ({
     cost,
     needDir: true,
@@ -95,7 +74,6 @@ export const CARD_EFFECTS = (() => {
     }
   });
 
-  /* ---------- Knight (飛) ─ 8 向 ---------- */
   const makeKnight = cost => ({
     cost,
     needDir: true,
@@ -115,7 +93,6 @@ export const CARD_EFFECTS = (() => {
     }
   });
 
-  /* ---------- 1–12 棋形卡 ---------- */
   effects[1]  = single(1);
   effects[2]  = makeLine2(2);
   effects[3]  = makeTip(2);
@@ -128,7 +105,6 @@ export const CARD_EFFECTS = (() => {
   effects[10] = makeRotPattern([[-1,-1],[1,-1],[0,0],[0,1]], 4);
   effects[11] = makeRotPattern([[-1,0],[0,0],[1,0],[0,1]], 4);
 
-  /* ---------- 12 投石器 ---------- */
   effects[12] = {
     cost: 5,
     needDir: false,
@@ -148,7 +124,6 @@ export const CARD_EFFECTS = (() => {
     }
   };
 
-  /* ---------- 13–24（功能牌：純定義） ---------- */
   [
     [13,1],[14,0],[15,4],[16,4],[17,3],[18,5],
     [19,1],[20,5],[21,4],[22,4],[23,3],[24,2]
@@ -156,11 +131,6 @@ export const CARD_EFFECTS = (() => {
     effects[id] = { cost, needDir:false, effect:()=>({ok:true}) };
   });
 
-  /* ============================================================
-   *      前端即可試算落點的魔法   25,26,27,28,35,40,41,46,47
-   * ============================================================ */
-
-  // 25 斗轉星移 --------------------------------------------------
   effects[25] = {
     cost: 3, needDir: false,
     effect: (b, c, { src, dst }) => {
@@ -174,7 +144,6 @@ export const CARD_EFFECTS = (() => {
     }
   };
 
-  // 26 爆破魔法：3×3 破壞 ---------------------------------------
   effects[26] = {
     cost:5, needDir:false,
     effect:(b,_,{anchor})=>{
@@ -188,8 +157,7 @@ export const CARD_EFFECTS = (() => {
       return {ok:true,board:nb};
     }
   };
-  
-  // 27 聖火：整行 / 整列破壞 ------------------------------------
+
   effects[27] = {
     cost:4, needDir:true, dirs:['h','v'],
     effect:(b,_,{anchor,dir})=>{
@@ -202,7 +170,6 @@ export const CARD_EFFECTS = (() => {
     }
   };
 
-  // 28 流星群：3 個隨機 3×3 ------------------------------------
   effects[28] = {
     cost:4, needDir:false,
     effect:b=>{
@@ -218,7 +185,6 @@ export const CARD_EFFECTS = (() => {
     }
   };
 
-  // 35 咬：拔除 1 顆敵子 ----------------------------------------
   effects[35] = {
     cost:2, needDir:false,
     effect:(b,c,{anchor})=>{
@@ -230,7 +196,6 @@ export const CARD_EFFECTS = (() => {
     }
   };
 
-  // 40 感化：單點敵子變己子 -------------------------------------
   effects[40] = {
     cost:3, needDir:false,
     effect:(b,c,{anchor})=>{
@@ -242,7 +207,6 @@ export const CARD_EFFECTS = (() => {
     }
   };
 
-  // 41 洗腦：己子中心 3×3 轉化 ----------------------------------
   effects[41] = {
     cost:6, needDir:false,
     effect:(b,c,{anchor})=>{
@@ -259,23 +223,19 @@ export const CARD_EFFECTS = (() => {
     }
   };
 
-  // 46 能量恢復劑 ----------------------------------------------
   effects[46] = { cost:0, needDir:false, effect:()=>({ok:true,energyDelta:+2}) };
 
-  // 47 能量恢復劑（強）-----------------------------------------
   effects[47] = { cost:2, needDir:false, effect:()=>({ok:true,energyDelta:(Math.random()*6|0)+1}) };
 
-  /* ---------- ★ 新增 45 / 48 / 49 / 50 ---------- */
   [
-    [45,2],   // 事前準備
-    [48,5],   // 女僕的懷表
-    [49,4],   // 越多越好
-    [50,4]    // 制約
+    [45,2],
+    [48,5],
+    [49,4],
+    [50,4]
   ].forEach(([id,cost])=>{
     effects[id]={cost,needDir:false,effect:()=>({ok:true})};
   });
 
-  /* ---------- 29~34,36~39,42~44 先定義 cost，效果後端處理 ----- */
   [
     [29,6],[30,3],[31,3],[32,4],[33,6],[34,4],
     [36,6],[37,4],[38,4],[39,4],[42,2],[43,3],[44,2]
@@ -283,7 +243,6 @@ export const CARD_EFFECTS = (() => {
     effects[id] ??= {cost,needDir:false,effect:()=>({ok:true})};
   });
 
-  /* ---------- 其餘未定義：單點 1 能 -------------------------- */
   Array.from({length:56},(_,i)=>i+1).forEach(id=>{
     effects[id] ??= single(1);
   });
