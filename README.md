@@ -11,19 +11,22 @@ Game project about GO for PD course
 ```
 go_game_project/ 
 ├── app.py # 主 Flask 應用（routing + WebSocket） 
+├── server.js # 建立連線伺服器
 ├── game_logic.py # 遊戲邏輯（棋盤控制、輪流判斷、清空） 
 ├── user_auth.py # 使用者登入/註冊驗證（與 DB 整合）
 ├── models.py # 資料庫模型（User） 
 ├── requirements.txt # Python 依賴列表 
-├── static/ 
+├── static/ 前端網頁使用資料
 │ ├── css/ 
 │ │ └── base.css # 基本樣式 
 │ ├── js/ 
 │ │ ├── main.js # partial 畫面載入邏輯 
-│ │ └── board.js # WebSocket + 棋盤繪製 
-├── templates/
+│ │ ├── board/ # WebSocket + 棋盤繪製相關函數 
+│ │ ├── conv_mode2.js #卷積圍棋載入
+│ │ └── board2.js # 經典圍棋載入
+├── templates/ html檔案
 │ ├── base.html # 母板模板 
-│ ├── index.html # 主頁（遊戲畫面） 
+│ ├── lobby.html # 主頁（遊戲畫面） 
 │ ├── login.html # 登入頁 
 │ ├── register.html # 註冊頁 
 │ └── partials/ 
@@ -61,7 +64,7 @@ pip install Flask-SQLAlchemy
 
 ### 3.根目錄啟動伺服器
 ```bash
-python app.py
+python app.py              #卷積圍棋目前只需要啟動這個
 python server.py           #這是卡牌對戰需要的伺服器
 ```
 開啟瀏覽器進入:
@@ -77,6 +80,8 @@ http://(你的ip):5000/card?room=demo&player=2 #卡牌對戰玩家2
 ✅ 帳號註冊/登入（SHA256 加密）
 
 ✅ 單人對局、棋子落子、輪流交替
+
+✅ 死活棋評估、領地估算
 
 ✅ 清空棋盤功能（reset）
 

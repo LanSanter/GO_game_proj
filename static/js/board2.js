@@ -1,9 +1,9 @@
-import { drawBoard, redrawBoard } from './board_core.js';
-import { registerBoardClickHandler } from './board_interaction.js';
-import { gameIdRef,lastMove, boardState, boardSize, cellSize, currentColorRef } from './board_state.js';
-import { emitResetBoard, initSocketEvents } from './board_socket.js';
+
+import { registerBoardClickHandler } from './board/board_interaction.js';
+import { gameIdRef,lastMove, boardState, boardSize, cellSize, currentColorRef } from './board/board_state.js';
+import { emitResetBoard, initSocketEvents } from './board/board_socket.js';
 import { DeathReviewState, drawTerritoryOnTop} from './review.js';
-import { registerDeathReviewClickHandler } from './board_interaction.js';
+import { registerDeathReviewClickHandler } from './board/board_interaction.js';
 import { runBenson } from './benson.js';
 
 
