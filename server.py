@@ -565,26 +565,23 @@ class Room:
     def _magic_44(self,pid,params):
         self.state["effects"]["mischief"]=6; return True
 
-    def _magic_46(self,pid,params):
-        self.state["energy"][pid]=min(self.state["energyCap"][pid],self.state["energy"][pid]+2)
+    def _magic_45(self, pid, params):
+        """能量恢復劑：+2 能量"""
+        cap=self.state["energyCap"][pid]
+        self.state["energy"][pid]=min(cap, self.state["energy"][pid]+2)
         return True
 
-    def _magic_47(self,pid,params):
+    def _magic_46(self, pid, params):
+        """能量恢復劑(強)：+1~6 能量"""
+        cap=self.state["energyCap"][pid]
         delta=random.randint(1,6)
-        self.state["energy"][pid]=min(self.state["energyCap"][pid],self.state["energy"][pid]+delta)
+        self.state["energy"][pid]=min(cap, self.state["energy"][pid]+delta)
         return True
 
-    def _magic_48(self,pid,params):
-        target=params.get("card")
-        if target is None:
-            emit("error",{"msg":"需指定 card"},room=self.id); return False
-        eff=self.state["effects"]["cost_reduction"].setdefault(pid,{})
-        eff[target]=eff.get(target,0)+2
-        return True
-
-    def _magic_49(self,pid,params):
+    def _magic_47(self, pid, params):
+        """女僕的懷表：撤銷前兩回合所有落子"""
         tc=self.state["turnCount"]
-        targets=[p for p in self.state["placements"] if p["turn"] in (tc-1,tc-2)]
+        targets=[p for p in self.state["placements"] if p["turn"] in (tc-1, tc-2)]
         bd=self.state["board"]; guard=self.state["effects"]["guard"]
         for mv in targets:
             for x,y in mv["coords"]:
@@ -592,16 +589,30 @@ class Room:
                     bd[y][x]=0
         return True
 
-    def _magic_50(self,pid,params):
+    def _magic_48(self, pid, params):
+        """越多越好：手牌上限 +1"""
         bonus=self.state["effects"]["hand_cap_bonus"]
         bonus[pid]=bonus.get(pid,0)+1
         return True
 
-    def _magic_51(self,pid,params):
+    def _magic_49(self, pid, params):
+        """制約：指定牌種 6 回合封鎖"""
         kind=params.get("kind")
         if kind not in ("shape","func","magic"):
-            emit("error",{"msg":"kind 應為 shape/func/magic"},room=self.id); return False
-        self.state["effects"]["ban_group"]={"kind":kind,"until":self.state["turnCount"]+6}
+            emit("error",{"msg":"kind 應為 shape/func/magic"},room=self.id)
+            return False
+        self.state["effects"]["ban_group"]={
+            "kind":kind,"until":self.state["turnCount"]+6
+        }
+        return True
+    
+    def _magic_50(self, pid, params):
+        """成本減免：隨機 / 指定卡能量 -2，可疊加"""
+        target=params.get("card")
+        if target is None:
+            emit("error",{"msg":"需指定 card"},room=self.id); return False
+        eff=self.state["effects"]["cost_reduction"].setdefault(pid,{})
+        eff[target]=eff.get(target,0)+2
         return True
 
     # ------------------ end_turn (保持原樣) ------------------
