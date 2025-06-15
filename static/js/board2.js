@@ -1,6 +1,6 @@
 
 import { registerBoardClickHandler } from './board/board_interaction.js';
-import { gameIdRef,lastMove, boardState, boardSize, cellSize, currentColorRef } from './board/board_state.js';
+import { gameIdRef,lastMove, boardState, boardSize, cellSize, currentColorRef, territoryHistory } from './board/board_state.js';
 import { emitResetBoard, initSocketEvents } from './board/board_socket.js';
 import { DeathReviewState, drawTerritoryOnTop} from './review.js';
 import { registerDeathReviewClickHandler } from './board/board_interaction.js';
@@ -17,7 +17,7 @@ window.addEventListener("DOMContentLoaded", () => {
         return;
     }
     //初始化棋盤
-    initSocketEvents(socket, ctx, cellSize, gameIdRef, lastMove, {
+    initSocketEvents(socket, ctx, cellSize, gameIdRef, lastMove, territoryHistory, {
         onMessage: (msg) => {
             document.getElementById("error-msg").textContent = msg;
         },

@@ -34,6 +34,7 @@ export function registerBoardClickHandler({ canvas, cellSize, boardState, socket
     canvas.addEventListener("click", currentClickHandler);
 }
 
+// 結算模式，讓使用者可以點擊標注死活棋
 export function registerDeathReviewClickHandler({ canvas, cellSize, deathReview, statedraw }) {
     clearClickHandlers(canvas);
     statedraw();

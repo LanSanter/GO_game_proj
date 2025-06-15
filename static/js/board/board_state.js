@@ -2,9 +2,10 @@ const boardSize = 19;
 const cellSize = 30;
 const boardState = Array.from({ length: boardSize }, () => Array(boardSize).fill(null));
 const gameIdRef = { value: null };
-let lastMove = {};
+let lastMove = {value: null}; // 用於記錄最後一次落子位置
 let currentColor = "black";
 const currentColorRef = { value: currentColor };
+const territoryHistory = [];
 
 function resetGameState(boardState, boardSize) {
     for (let y = 0; y < boardSize; y++) boardState[y].fill(null);
@@ -17,4 +18,4 @@ function updateCurrentColor(color) {
 }
 
 
-export {boardSize, cellSize, boardState, gameIdRef, lastMove, currentColor, currentColorRef, resetGameState, setGameId, updateCurrentColor}
+export {boardSize, cellSize, boardState, gameIdRef, lastMove, currentColor, currentColorRef, territoryHistory, resetGameState, setGameId, updateCurrentColor}

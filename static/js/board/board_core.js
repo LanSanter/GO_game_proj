@@ -42,10 +42,36 @@ function drawBoard(ctx, cellSize, boardSize) {
     }
 }
 function drawStone(ctx, x, y, cellSize, color) {
+    const cx = (x + 0.5) * cellSize;
+    const cy = (y + 0.5) * cellSize;
+    const RADIUS = cellSize / 2.5;
+
+    // 棋子漸層
+    const g = ctx.createRadialGradient(
+        cx - RADIUS * 0.4, cy - RADIUS * 0.4, RADIUS * 0.1,
+        cx, cy, RADIUS * 1.05
+    );
+    if (color === "black") {
+        g.addColorStop(0, "#888");
+        g.addColorStop(0.3, "#444");
+        g.addColorStop(1, "#000");
+    } else {
+        g.addColorStop(0, "#fff");
+        g.addColorStop(0.55, "#eee");
+        g.addColorStop(1, "#aaa");
+    }
+
+    ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.arc((x + 0.5) * cellSize, (y + 0.5) * cellSize, cellSize / 2.5, 0, 2 * Math.PI);
-    ctx.fillStyle = color;
+    ctx.arc(cx, cy, RADIUS, 0, Math.PI * 2);
     ctx.fill();
+
+    // 棋子外框
+    ctx.strokeStyle = "rgba(0,0,0,.5)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, RADIUS, 0, Math.PI * 2);
+    ctx.stroke();
 }
 function drawHighlight(ctx, x, y, cellSize) {
     const px = (x + 0.5) * cellSize;

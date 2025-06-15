@@ -1,4 +1,4 @@
-import { drawBoard, drawStone, drawHighlight } from './board_core.js';
+import { drawBoard, drawStone, drawHighlight } from './board/board_core.js';
 import { territoryEstimate } from './territory_estimate.js';
 
 class DeathReviewState {

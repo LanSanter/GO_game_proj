@@ -23,9 +23,11 @@
             <canvas id="board" width="570" height="570" style="border:1px solid black"></canvas>
         </div>
     </div>
+    <canvas id="territory-chart" width="600" height="200" style="margin-top: 20px;"></canvas>
 </div>
 {% endblock %}
 {% block scripts %}
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script type="module" src="{{ url_for('static', filename='js/board2.js') }}"></script>
 {% endblock %}
