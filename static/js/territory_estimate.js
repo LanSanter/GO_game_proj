@@ -17,7 +17,7 @@ function territoryEstimate(boardState, boardSize) {
     influenceMap = dilation(influenceMap, boardSize);
 
   // 21 erosions
-  for (let count = 0; count < 21; count++)
+  for (let count = 0; count < 22; count++)
     influenceMap = erosion(influenceMap, boardSize);
 
   // calculate territories
